@@ -2,10 +2,9 @@ import "../global.css";
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
-
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { GuardianProvider, useGuardian } from '@/context/GuardianContext';
 
@@ -16,19 +15,27 @@ function RootLayoutContent() {
   const colorScheme = useColorScheme();
   const { isInitialized } = useGuardian();
   const [isAppReady, setIsAppReady] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // App initialization timeout to prevent freeze
-    const timeout = setTimeout(() => {
+    // Always set app ready after 3 seconds as fallback
+    timeoutRef.current = setTimeout(() => {
       setIsAppReady(true);
     }, 3000);
 
     if (isInitialized) {
-      clearTimeout(timeout);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       setIsAppReady(true);
     }
 
-    return () => clearTimeout(timeout);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [isInitialized]);
 
   useEffect(() => {
