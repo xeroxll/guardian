@@ -1,30 +1,21 @@
-import React from 'react';
-import { View, Text, SafeAreaView, FlatList, Pressable, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, SafeAreaView, FlatList, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useGuardian } from '@/context/GuardianContext';
 
 export default function BlockingScreen() {
   const { blacklist, addToBlacklist, removeFromBlacklist } = useGuardian();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [appName, setAppName] = useState('');
+  const [packageName, setPackageName] = useState('');
 
   const handleAddApp = () => {
-    Alert.prompt(
-      'Добавить приложение',
-      'Введите название и пакет через запятую (напр. Telegram, org.telegram.messenger)',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        { 
-          text: 'Добавить', 
-          onPress: (value?: string) => {
-            if (value) {
-              const [name, packageName] = value.split(',').map((s: string) => s.trim());
-              if (name && packageName) {
-                addToBlacklist({ name, packageName });
-              }
-            }
-          }
-        }
-      ]
-    );
+    if (appName.trim() && packageName.trim()) {
+      addToBlacklist({ name: appName.trim(), packageName: packageName.trim() });
+      setAppName('');
+      setPackageName('');
+      setModalVisible(false);
+    }
   };
 
   return (
@@ -63,8 +54,58 @@ export default function BlockingScreen() {
         }
       />
 
+      {/* Custom Modal for adding apps */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          className="flex-1 justify-end"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View className="rounded-t-3xl bg-[#1a1c26] p-6">
+            <Text className="mb-6 text-xl font-bold text-white">Добавить приложение</Text>
+            
+            <Text className="mb-2 text-sm text-gray-400">Название</Text>
+            <TextInput
+              className="mb-4 rounded-xl bg-[#0a0b10] p-4 text-white"
+              placeholder="Telegram"
+              placeholderTextColor="#6b7280"
+              value={appName}
+              onChangeText={setAppName}
+            />
+            
+            <Text className="mb-2 text-sm text-gray-400">Пакет (package name)</Text>
+            <TextInput
+              className="mb-6 rounded-xl bg-[#0a0b10] p-4 text-white"
+              placeholder="org.telegram.messenger"
+              placeholderTextColor="#6b7280"
+              value={packageName}
+              onChangeText={setPackageName}
+            />
+            
+            <View className="flex-row gap-3">
+              <Pressable 
+                onPress={() => setModalVisible(false)}
+                className="flex-1 rounded-xl bg-[#2a2a2a] p-4"
+              >
+                <Text className="text-center font-bold text-gray-400">Отмена</Text>
+              </Pressable>
+              <Pressable 
+                onPress={handleAddApp}
+                className="flex-1 rounded-xl bg-[#6366f1] p-4"
+              >
+                <Text className="text-center font-bold text-white">Добавить</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <Pressable 
-        onPress={handleAddApp}
+        onPress={() => setModalVisible(true)}
         className="absolute bottom-10 right-6 h-16 w-16 items-center justify-center rounded-full bg-[#6366f1] shadow-lg"
       >
         <Ionicons name="add" size={32} color="white" />
