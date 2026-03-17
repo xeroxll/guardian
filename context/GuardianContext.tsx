@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -49,6 +49,16 @@ const STORAGE_KEYS = {
 
 const GuardianContext = createContext<GuardianContextType | undefined>(undefined);
 
+// Safe JSON parse with fallback
+const safeJSONParse = <T>(value: string | null, fallback: T): T => {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 export function GuardianProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isProtectionEnabled, setIsProtectionEnabled] = useState(true);
@@ -62,8 +72,14 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     checks: 0,
   });
 
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const isProtectionEnabledRef = useRef(isProtectionEnabled);
+  
+  // Keep ref updated
+  useEffect(() => {
+    isProtectionEnabledRef.current = isProtectionEnabled;
+  }, [isProtectionEnabled]);
 
   useEffect(() => {
     const init = async () => {
@@ -84,15 +100,16 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     }
 
     const interval = setInterval(() => {
-      if (isProtectionEnabled) {
+      // Use ref to get current value
+      if (isProtectionEnabledRef.current) {
         // Background task simulation
       }
     }, 30000);
 
     return () => {
       clearInterval(interval);
-      if (notificationListener.current) notificationListener.current.remove();
-      if (responseListener.current) responseListener.current.remove();
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
@@ -117,17 +134,17 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.USB_STATUS),
       ]);
 
-      if (enabled !== null) setIsProtectionEnabled(JSON.parse(enabled));
-      if (storedBlacklist) setBlacklist(JSON.parse(storedBlacklist));
-      if (storedLogs) setLogs(JSON.parse(storedLogs));
-      if (storedStats) setStats(JSON.parse(storedStats));
-      if (storedUsb) setUsbStatus(JSON.parse(storedUsb));
+      setIsProtectionEnabled(safeJSONParse(enabled, true));
+      setBlacklist(safeJSONParse<BlacklistedApp[]>(storedBlacklist, []));
+      setLogs(safeJSONParse<LogEntry[]>(storedLogs, []));
+      setStats(safeJSONParse(storedStats, { threats: 0, blocks: 0, checks: 0 }));
+      setUsbStatus(safeJSONParse(storedUsb, false));
     } catch (e) {
       console.error('Load data failed', e);
     }
   };
 
-  const addLog = async (entry: Omit<LogEntry, 'id' | 'time'>) => {
+  const addLog = useCallback(async (entry: Omit<LogEntry, 'id' | 'time'>) => {
     const newEntry: LogEntry = {
       ...entry,
       id: Date.now().toString(),
@@ -135,10 +152,11 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     };
     setLogs(prev => {
       const updated = [newEntry, ...prev].slice(0, 50);
-      AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(updated));
+      // Fire and forget - don't await
+      AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(updated)).catch(console.warn);
       return updated;
     });
-  };
+  }, []);
 
   const sendAlert = async (title: string, body: string) => {
     if (Platform.OS === 'web') return;
@@ -152,10 +170,15 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const toggleProtection = async () => {
+  const toggleProtection = useCallback(async () => {
     const newValue = !isProtectionEnabled;
     setIsProtectionEnabled(newValue);
-    await AsyncStorage.setItem(STORAGE_KEYS.PROTECTION_ENABLED, JSON.stringify(newValue));
+    
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.PROTECTION_ENABLED, JSON.stringify(newValue));
+    } catch (e) {
+      console.warn('Failed to save protection state', e);
+    }
     
     addLog({
       type: 'check',
@@ -164,53 +187,66 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!newValue) {
-      await sendAlert('Внимание!', 'Защита Guardian отключена.');
+      sendAlert('Внимание!', 'Защита Guardian отключена.');
     }
-  };
+  }, [isProtectionEnabled, addLog]);
 
-  const addToBlacklist = async (app: Omit<BlacklistedApp, 'id'>) => {
+  const addToBlacklist = useCallback(async (app: Omit<BlacklistedApp, 'id'>) => {
     const newApp = { ...app, id: Date.now().toString() };
-    const updated = [...blacklist, newApp];
-    setBlacklist(updated);
-    await AsyncStorage.setItem(STORAGE_KEYS.BLACKLIST, JSON.stringify(updated));
+    setBlacklist(prev => {
+      const updated = [...prev, newApp];
+      AsyncStorage.setItem(STORAGE_KEYS.BLACKLIST, JSON.stringify(updated)).catch(console.warn);
+      return updated;
+    });
     addLog({ type: 'block', title: 'Приложение заблокировано', desc: app.name });
-  };
+  }, [addLog]);
 
-  const removeFromBlacklist = async (id: string) => {
-    const updated = blacklist.filter(a => a.id !== id);
-    setBlacklist(updated);
-    await AsyncStorage.setItem(STORAGE_KEYS.BLACKLIST, JSON.stringify(updated));
-  };
+  const removeFromBlacklist = useCallback(async (id: string) => {
+    setBlacklist(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      AsyncStorage.setItem(STORAGE_KEYS.BLACKLIST, JSON.stringify(updated)).catch(console.warn);
+      return updated;
+    });
+  }, []);
 
-  const toggleUsbStatus = async () => {
-    const newStatus = !usbStatus;
-    setUsbStatus(newStatus);
-    await AsyncStorage.setItem(STORAGE_KEYS.USB_STATUS, JSON.stringify(newStatus));
-    if (newStatus) {
-      addLog({ type: 'threat', title: 'USB отладка включена', desc: 'Обнаружена угроза' });
-      await sendAlert('Опасность!', 'USB-отладка включена.');
-    }
-  };
+  const toggleUsbStatus = useCallback(async () => {
+    setUsbStatus(prev => {
+      const newStatus = !prev;
+      AsyncStorage.setItem(STORAGE_KEYS.USB_STATUS, JSON.stringify(newStatus)).catch(console.warn);
+      
+      if (newStatus) {
+        addLog({ type: 'threat', title: 'USB отладка включена', desc: 'Обнаружена угроза' });
+        sendAlert('Опасность!', 'USB-отладка включена.');
+      }
+      
+      return newStatus;
+    });
+  }, [addLog]);
 
-  const startScan = async () => {
+  const startScan = useCallback(async () => {
     if (isScanning) return;
     setIsScanning(true);
+    
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const newStats = {
-      checks: stats.checks + 1,
-      threats: usbStatus ? stats.threats + 1 : stats.threats,
-      blocks: stats.blocks,
-    };
-    setStats(newStats);
-    await AsyncStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(newStats));
+    setStats(prev => {
+      const newStats = {
+        checks: prev.checks + 1,
+        threats: usbStatus ? prev.threats + 1 : prev.threats,
+        blocks: prev.blocks,
+      };
+      AsyncStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(newStats)).catch(console.warn);
+      return newStats;
+    });
+    
     addLog({ type: 'check', title: 'Сканирование завершено', desc: 'Статус обновлен' });
     setIsScanning(false);
-  };
+  }, [isScanning, usbStatus, addLog]);
 
-  const openSettings = async (type: 'usb' | 'apps' | 'security') => {
+  const openSettings = useCallback(async (type: 'usb' | 'apps' | 'security') => {
     if (Platform.OS !== 'android') {
-      alert('Эта функция доступна только на Android устройствах');
+      // Use console.warn instead of alert for web compatibility
+      console.warn('Эта функция доступна только на Android устройствах');
       return;
     }
 
@@ -225,26 +261,40 @@ export function GuardianProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Failed to open settings', e);
     }
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    isProtectionEnabled,
+    toggleProtection,
+    blacklist,
+    addToBlacklist,
+    removeFromBlacklist,
+    logs,
+    usbStatus,
+    toggleUsbStatus,
+    stats,
+    startScan,
+    isScanning,
+    isInitialized,
+    openSettings,
+  }), [
+    isProtectionEnabled,
+    toggleProtection,
+    blacklist,
+    addToBlacklist,
+    removeFromBlacklist,
+    logs,
+    usbStatus,
+    toggleUsbStatus,
+    stats,
+    startScan,
+    isScanning,
+    isInitialized,
+    openSettings,
+  ]);
 
   return (
-    <GuardianContext.Provider
-      value={{
-        isProtectionEnabled,
-        toggleProtection,
-        blacklist,
-        addToBlacklist,
-        removeFromBlacklist,
-        logs,
-        usbStatus,
-        toggleUsbStatus,
-        stats,
-        startScan,
-        isScanning,
-        isInitialized,
-        openSettings,
-      }}
-    >
+    <GuardianContext.Provider value={contextValue}>
       {children}
     </GuardianContext.Provider>
   );
