@@ -28,13 +28,11 @@ fun HomeScreen(viewModel: GuardianViewModel) {
     val stats by viewModel.stats.collectAsState()
     val events by viewModel.events.collectAsState()
     
-    // Calculate scan progress percentage
     val scanProgress = if (stats.appsScanned > 0) {
         (stats.appsScanned.toFloat() / 200 * 100).coerceIn(0f, 100f)
     } else 0f
     
-    // Get recent events
-    val recentEvents = events.take(3)
+    val recentEvents = events.take(5)
     
     Column(
         modifier = Modifier
@@ -56,13 +54,12 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = if (isProtectionEnabled) "Protection Active" else "Protection Disabled",
+                    text = if (isProtectionEnabled) "Защита активна" else "Защита отключена",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isProtectionEnabled) GuardianGreen else GuardianRed
                 )
             }
             
-            // Main Protection Toggle
             Switch(
                 checked = isProtectionEnabled,
                 onCheckedChange = { viewModel.setProtectionEnabled(it) },
@@ -77,12 +74,11 @@ fun HomeScreen(viewModel: GuardianViewModel) {
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Main Shield with Status
+        // Main Shield
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            // Glow effect
             Box(
                 modifier = Modifier
                     .size(200.dp)
@@ -97,7 +93,6 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                     )
             )
             
-            // Shield Icon
             Card(
                 modifier = Modifier
                     .size(160.dp)
@@ -122,7 +117,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isProtectionEnabled) "SAFE" else "OFF",
+                            text = if (isProtectionEnabled) "БЕЗОПАСНО" else "ВЫКЛ",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (isProtectionEnabled) GuardianGreen else GuardianRed
                         )
@@ -133,7 +128,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Scan Progress Card
+        // Status Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -148,13 +143,13 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Scan Status",
+                        text = "Статус сканирования",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${stats.appsScanned} apps",
+                        text = "${stats.appsScanned} приложений",
                         style = MaterialTheme.typography.bodyMedium,
                         color = GuardianGreen
                     )
@@ -162,7 +157,6 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Progress Bar
                 LinearProgressIndicator(
                     progress = { scanProgress / 100f },
                     modifier = Modifier
@@ -180,12 +174,12 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = if (stats.lastScanTime > 0) "Last: ${formatTime(stats.lastScanTime)}" else "Never scanned",
+                        text = if (stats.lastScanTime > 0) "Последнее: ${formatTime(stats.lastScanTime)}" else "Не сканировалось",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                     Text(
-                        text = "${stats.threatsBlocked} threats found",
+                        text = "${stats.threatsBlocked} угроз найдено",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (stats.threatsBlocked > 0) GuardianRed else Color.Gray
                     )
@@ -193,7 +187,6 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Quick Scan Button
                 Button(
                     onClick = { viewModel.startScan() },
                     modifier = Modifier.fillMaxWidth(),
@@ -208,7 +201,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Quick Scan")
+                    Text("Быстрая проверка")
                 }
             }
         }
@@ -225,7 +218,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                 icon = Icons.Default.Usb,
                 iconTint = if (isUsbMonitorEnabled) GuardianGreen else GuardianSurfaceVariant,
                 title = "USB",
-                value = if (isUsbMonitorEnabled) "ON" else "OFF",
+                value = if (isUsbMonitorEnabled) "ВКЛ" else "ВЫКЛ",
                 onClick = { viewModel.setUsbMonitorEnabled(!isUsbMonitorEnabled) }
             )
             
@@ -233,7 +226,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Warning,
                 iconTint = GuardianRed,
-                title = "Threats",
+                title = "Угрозы",
                 value = stats.threatsBlocked.toString(),
                 onClick = { }
             )
@@ -242,7 +235,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.CheckCircle,
                 iconTint = GuardianGreen,
-                title = "Safe",
+                title = "Безопасно",
                 value = (stats.appsScanned - stats.threatsBlocked).coerceAtLeast(0).toString(),
                 onClick = { }
             )
@@ -252,7 +245,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
         
         // Recent Activity
         Text(
-            text = "Recent Activity",
+            text = "Последняя активность",
             style = MaterialTheme.typography.titleMedium,
             color = Color.White,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -278,7 +271,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "No recent activity",
+                        text = "Нет активности",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -302,7 +295,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
         
         // Quick Actions
         Text(
-            text = "Quick Actions",
+            text = "Быстрые действия",
             style = MaterialTheme.typography.titleMedium,
             color = Color.White,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -315,8 +308,8 @@ fun HomeScreen(viewModel: GuardianViewModel) {
             QuickActionCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Security,
-                title = "Full Scan",
-                subtitle = "Scan all apps",
+                title = "Полное сканирование",
+                subtitle = "Проверить все",
                 iconTint = GuardianGreen,
                 onClick = { viewModel.startScan() }
             )
@@ -324,8 +317,8 @@ fun HomeScreen(viewModel: GuardianViewModel) {
             QuickActionCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Refresh,
-                title = "Reset",
-                subtitle = "Clear stats",
+                title = "Сброс",
+                subtitle = "Очистить статистику",
                 iconTint = GuardianRed,
                 onClick = { viewModel.resetStats() }
             )
@@ -355,9 +348,9 @@ private fun EventItem(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         when {
-                            title.contains("⚠️") || title.contains("Warning") -> GuardianRed.copy(alpha = 0.2f)
+                            title.contains("⚠️") || title.contains("Угроза") || title.contains("Threat") -> GuardianRed.copy(alpha = 0.2f)
                             title.contains("📱") -> GuardianBlue.copy(alpha = 0.2f)
-                            title.contains("🔍") -> GuardianGreen.copy(alpha = 0.2f)
+                            title.contains("✅") || title.contains("Безопасно") -> GuardianGreen.copy(alpha = 0.2f)
                             else -> GuardianSurfaceVariant
                         }
                     ),
@@ -366,15 +359,16 @@ private fun EventItem(
                 Icon(
                     imageVector = when {
                         title.contains("USB") -> Icons.Default.Usb
-                        title.contains("App") -> Icons.Default.Apps
-                        title.contains("Scan") -> Icons.Default.Search
+                        title.contains("App") || title.contains("Приложение") -> Icons.Default.Apps
+                        title.contains("Scan") || title.contains("Скан") -> Icons.Default.Search
+                        title.contains("Вирус") || title.contains("Virus") -> Icons.Default.BugReport
                         else -> Icons.Default.Info
                     },
                     contentDescription = null,
                     tint = when {
-                        title.contains("⚠️") || title.contains("Warning") -> GuardianRed
+                        title.contains("⚠️") || title.contains("Угроза") || title.contains("Threat") -> GuardianRed
                         title.contains("📱") -> GuardianBlue
-                        title.contains("🔍") -> GuardianGreen
+                        title.contains("✅") || title.contains("Безопасно") -> GuardianGreen
                         else -> Color.Gray
                     },
                     modifier = Modifier.size(18.dp)
@@ -385,7 +379,7 @@ private fun EventItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title,
+                    text = title.replace(Regex("[📱🔍✅⚠️🦠⏳❌]"), "").trim(),
                     style = MaterialTheme.typography.titleSmall,
                     color = Color.White
                 )
@@ -495,7 +489,7 @@ private fun QuickActionCard(
 }
 
 private fun formatTime(timestamp: Long): String {
-    if (timestamp == 0L) return "Never"
+    if (timestamp == 0L) return "Никогда"
     val sdf = java.text.SimpleDateFormat("dd MMM HH:mm", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
 }

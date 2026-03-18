@@ -37,13 +37,13 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Settings",
+            text = "Настройки",
             style = MaterialTheme.typography.headlineLarge,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Configure protection",
+            text = "Настройка защиты",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
@@ -52,7 +52,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         
         // Protection Section
         Text(
-            text = "PROTECTION",
+            text = "ЗАЩИТА",
             style = MaterialTheme.typography.labelMedium,
             color = GuardianPrimary,
             fontWeight = FontWeight.SemiBold,
@@ -62,8 +62,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Shield,
             iconTint = GuardianGreen,
-            title = "Active Protection",
-            subtitle = if (isProtectionEnabled) "Monitoring enabled" else "Monitoring disabled",
+            title = "Активная защита",
+            subtitle = if (isProtectionEnabled) "Мониторинг включен" else "Мониторинг выключен",
             trailing = {
                 Switch(
                     checked = isProtectionEnabled,
@@ -82,7 +82,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         
         // Security Section
         Text(
-            text = "SECURITY",
+            text = "БЕЗОПАСНОСТЬ",
             style = MaterialTheme.typography.labelMedium,
             color = GuardianPrimary,
             fontWeight = FontWeight.SemiBold,
@@ -92,8 +92,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Usb,
             iconTint = if (isUsbMonitorEnabled) GuardianBlue else GuardianSurfaceVariant,
-            title = "USB Debug Monitor",
-            subtitle = if (isUsbMonitorEnabled) "Monitoring enabled" else "Monitoring disabled",
+            title = "Мониторинг USB",
+            subtitle = if (isUsbMonitorEnabled) "Включен" else "Выключен",
             trailing = {
                 Switch(
                     checked = isUsbMonitorEnabled,
@@ -111,8 +111,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Sms,
             iconTint = GuardianBlue,
-            title = "SMS Filter",
-            subtitle = "Block scam SMS messages",
+            title = "Фильтр SMS",
+            subtitle = "Блокировка мошеннических SMS",
             trailing = {
                 Switch(
                     checked = viewModel.isSmsFilterEnabled.collectAsState().value,
@@ -130,8 +130,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Phone,
             iconTint = GuardianPink,
-            title = "Call Filter",
-            subtitle = "Block suspicious calls",
+            title = "Фильтр вызовов",
+            subtitle = "Блокировка подозрительных вызовов",
             trailing = {
                 Switch(
                     checked = viewModel.isCallFilterEnabled.collectAsState().value,
@@ -149,8 +149,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Apps,
             iconTint = GuardianYellow,
-            title = "Package Monitor",
-            subtitle = "Monitor app installations",
+            title = "Мониторинг приложений",
+            subtitle = "Отслеживание установки приложений",
             trailing = {
                 Switch(
                     checked = viewModel.isAppMonitorEnabled.collectAsState().value,
@@ -179,8 +179,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.BugReport,
             iconTint = if (viewModel.isVirusTotalApiKeyConfigured()) GuardianGreen else GuardianYellow,
-            title = "VirusTotal API Key",
-            subtitle = if (viewModel.isVirusTotalApiKeyConfigured()) "API key configured" else "Tap to configure",
+            title = "API ключ VirusTotal",
+            subtitle = if (viewModel.isVirusTotalApiKeyConfigured()) "Настроен" else "Нажмите для настройки",
             onClick = { showApiKeyDialog = true }
         )
         
@@ -188,7 +188,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         
         // Data Section
         Text(
-            text = "DATA",
+            text = "ДАННЫЕ",
             style = MaterialTheme.typography.labelMedium,
             color = GuardianPrimary,
             fontWeight = FontWeight.SemiBold,
@@ -198,8 +198,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         SettingsItem(
             icon = Icons.Default.Refresh,
             iconTint = GuardianRed,
-            title = "Reset Statistics",
-            subtitle = "Clear all saved data",
+            title = "Сброс статистики",
+            subtitle = "Очистить все сохраненные данные",
             onClick = { showResetDialog = true }
         )
         
@@ -222,8 +222,8 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
             AlertDialog(
                 onDismissRequest = { showResetDialog = false },
                 containerColor = GuardianSurface,
-                title = { Text("Reset Statistics?", color = Color.White) },
-                text = { Text("This will clear all your statistics and event history.", color = Color.Gray) },
+                title = { Text("Сбросить статистику?", color = Color.White) },
+                text = { Text("Это очистит всю статистику и историю событий.", color = Color.Gray) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -231,12 +231,12 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                             showResetDialog = false
                         }
                     ) {
-                        Text("Reset", color = GuardianRed)
+                        Text("Сбросить", color = GuardianRed)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showResetDialog = false }) {
-                        Text("Cancel", color = Color.Gray)
+                        Text("Отмена", color = Color.Gray)
                     }
                 }
             )
@@ -249,7 +249,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                 containerColor = GuardianSurface,
                 title = { 
                     Text(
-                        "VirusTotal API Key", 
+                        "API ключ VirusTotal", 
                         color = Color.White, 
                         fontWeight = FontWeight.Bold 
                     ) 
@@ -257,12 +257,12 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                 text = {
                     Column {
                         Text(
-                            "Enter your VirusTotal API key to enable cloud scanning.",
+                            "Введите ваш API ключ VirusTotal для облачного сканирования.",
                             color = Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Get a free API key at virustotal.com",
+                            "Получить бесплатный ключ на virustotal.com",
                             color = GuardianBlue,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -271,7 +271,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                         OutlinedTextField(
                             value = apiKeyInput,
                             onValueChange = { apiKeyInput = it },
-                            label = { Text("API Key") },
+                            label = { Text("API ключ") },
                             singleLine = true,
                             visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -279,7 +279,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                                 IconButton(onClick = { showApiKey = !showApiKey }) {
                                     Icon(
                                         imageVector = if (showApiKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (showApiKey) "Hide" else "Show",
+                                        contentDescription = if (showApiKey) "Скрыть" else "Показать",
                                         tint = Color.Gray
                                     )
                                 }
@@ -306,7 +306,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                             apiKeyInput = ""
                         }
                     ) {
-                        Text("Save", color = GuardianGreen)
+                        Text("Сохранить", color = GuardianGreen)
                     }
                 },
                 dismissButton = {
@@ -314,7 +314,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
                         showApiKeyDialog = false
                         apiKeyInput = ""
                     }) {
-                        Text("Cancel", color = Color.Gray)
+                        Text("Отмена", color = Color.Gray)
                     }
                 }
             )

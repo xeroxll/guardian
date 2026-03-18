@@ -57,7 +57,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
             repository.setProtectionEnabled(enabled)
             repository.addEvent(
                 if (enabled) EventType.PROTECTION_ENABLED else EventType.PROTECTION_DISABLED,
-                if (enabled) "🛡️ Protection Enabled" else "⏸️ Protection Disabled",
+                if (enabled) "🛡️ Защита включена" else "⏸️ Защита выключена",
                 "Security protection has been ${if (enabled) "enabled" else "disabled"}"
             )
         }

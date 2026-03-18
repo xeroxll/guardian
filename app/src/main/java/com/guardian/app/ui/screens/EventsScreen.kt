@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.guardian.app.data.model.EventType
@@ -33,13 +32,13 @@ fun EventsScreen(viewModel: GuardianViewModel) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Security Events",
+            text = "События",
             style = MaterialTheme.typography.headlineLarge,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Recent activity log",
+            text = "Журнал активности",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
@@ -60,7 +59,7 @@ fun EventsScreen(viewModel: GuardianViewModel) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No events yet",
+                        text = "Нет событий",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.Gray
                     )
@@ -90,7 +89,7 @@ private fun EventItem(event: SecurityEvent) {
         EventType.SCAN_COMPLETED -> Triple(Icons.Default.CheckCircle, GuardianPrimary, GuardianPrimary.copy(alpha = 0.1f))
     }
     
-    val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
     val time = dateFormat.format(Date(event.timestamp))
     
     Card(
@@ -121,7 +120,7 @@ private fun EventItem(event: SecurityEvent) {
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = event.title,
+                    text = event.title.replace(Regex("[📱🔍✅⚠️🦠⏳❌🔌📞]"), "").trim(),
                     style = MaterialTheme.typography.titleSmall,
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold

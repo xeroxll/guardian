@@ -21,12 +21,21 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.guardian.app.data.api.VirusTotalResult
 import com.guardian.app.ui.theme.*
 import com.guardian.app.viewmodel.GuardianViewModel
 import kotlinx.coroutines.launch
+
+// Data class for app scan result
+data class AppScanResult(
+    val packageName: String,
+    val appName: String,
+    val isThreat: Boolean,
+    val threatType: String,
+    val isSystemApp: Boolean,
+    val virusTotalResult: VirusTotalResult? = null
+)
 
 @Composable
 fun ScanScreen(viewModel: GuardianViewModel) {
@@ -38,8 +47,9 @@ fun ScanScreen(viewModel: GuardianViewModel) {
     val virusTotalResults by viewModel.virusTotalResults.collectAsState()
     
     var isScanning by remember { mutableStateOf(false) }
-    var scanResults by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var scanResults by remember { mutableStateOf<List<AppScanResult>>(emptyList()) }
     var showVirusTotalDialog by remember { mutableStateOf(false) }
+    var showAllApps by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
     val infiniteTransition = rememberInfiniteTransition(label = "scan")
@@ -61,18 +71,18 @@ fun ScanScreen(viewModel: GuardianViewModel) {
     ) {
         // Header
         Text(
-            text = "Scan",
+            text = "Сканер",
             style = MaterialTheme.typography.headlineLarge,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Check installed applications",
+            text = "Проверка установленных приложений",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         // Scan Buttons Row
         Row(
@@ -99,7 +109,6 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                         )
                 )
                 
-                // Scan Icon
                 Card(
                     modifier = Modifier
                         .size(120.dp)
@@ -112,56 +121,41 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                                 val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
                                 val blacklistedPackages = blacklist.map { it.packageName }.toSet()
                                 
-                                val dangerousPatterns = listOf(
-                                    "com.svidersk", "com.zmzpass", "com.crypt",
-                                    "com.malware", "com.virus", "com.trojan",
-                                    "com.hack", "com.keylog", "com.spy",
-                                    "com.remote", "com.admin", "com.root",
-                                    "com.system", "com.advanced", "com.powerful",
-                                    ".hacker", ".cracker", ".bypass"
-                                )
-                                
-                                val dangerousPerms = listOf(
-                                    "android.permission.READ_SMS",
-                                    "android.permission.RECEIVE_SMS", 
-                                    "android.permission.SEND_SMS",
-                                    "android.permission.READ_CALL_LOG",
-                                    "android.permission.READ_CONTACTS",
-                                    "android.permission.CAMERA",
-                                    "android.permission.RECORD_AUDIO"
-                                )
-                                
-                                val threats = mutableListOf<Pair<String, String>>()
+                                val threats = mutableListOf<AppScanResult>()
                                 
                                 for (app in installedApps) {
-                                    val packageName = app.packageName.lowercase()
+                                    val packageName = app.packageName
                                     val appName = pm.getApplicationLabel(app).toString()
-                                    
-                                    if (blacklistedPackages.contains(app.packageName)) {
-                                        threats.add(appName to "Blacklisted")
-                                        continue
-                                    }
-                                    
-                                    val isDangerousPattern = dangerousPatterns.any { packageName.contains(it) }
-                                    
-                                    val hasSuspiciousPerms = try {
-                                        val pi = pm.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
-                                        val perms = pi.requestedPermissions?.toList() ?: emptyList()
-                                        perms.count { dangerousPerms.contains(it) } >= 3
-                                    } catch (e: Exception) { false }
-                                    
                                     val isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                                     
-                                    if ((isDangerousPattern || hasSuspiciousPerms) && !isSystemApp) {
-                                        val reason = when {
-                                            isDangerousPattern -> "Suspicious name"
-                                            hasSuspiciousPerms -> "Dangerous permissions"
-                                            else -> "Unknown threat"
-                                        }
-                                        threats.add(appName to reason)
+                                    var isThreat = false
+                                    var threatType = ""
+                                    
+                                    // Check blacklist
+                                    if (blacklistedPackages.contains(packageName)) {
+                                        isThreat = true
+                                        threatType = "В черном списке"
                                     }
                                     
-                                    kotlinx.coroutines.delay(2)
+                                    // Check VirusTotal results
+                                    val vtResult = virusTotalResults[packageName]
+                                    if (vtResult != null && vtResult.isInfected) {
+                                        isThreat = true
+                                        threatType = "VirusTotal: ${vtResult.malwareName ?: "Обнаружено"}"
+                                    }
+                                    
+                                    threats.add(
+                                        AppScanResult(
+                                            packageName = packageName,
+                                            appName = appName,
+                                            isThreat = isThreat,
+                                            threatType = threatType,
+                                            isSystemApp = isSystemApp,
+                                            virusTotalResult = vtResult
+                                        )
+                                    )
+                                    
+                                    kotlinx.coroutines.delay(1)
                                 }
                                 
                                 scanResults = threats
@@ -178,7 +172,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     ) {
                         Icon(
                             imageVector = if (isScanning) Icons.Default.Refresh else Icons.Default.Security,
-                            contentDescription = "Quick Scan",
+                            contentDescription = "Быстрая проверка",
                             modifier = Modifier
                                 .size(48.dp)
                                 .then(if (isScanning) Modifier.rotate(rotation) else Modifier),
@@ -193,7 +187,6 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                // Glow effect
                 Box(
                     modifier = Modifier
                         .size(160.dp)
@@ -223,7 +216,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     ) {
                         Icon(
                             imageVector = if (isVirusTotalScanning) Icons.Default.Sync else Icons.Default.BugReport,
-                            contentDescription = "VirusTotal Scan",
+                            contentDescription = "VirusTotal",
                             modifier = Modifier
                                 .size(48.dp)
                                 .then(if (isVirusTotalScanning) Modifier.rotate(rotation) else Modifier),
@@ -238,9 +231,9 @@ fun ScanScreen(viewModel: GuardianViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = when {
-                isScanning -> "Scanning..."
+                isScanning -> "Сканирование..."
                 isVirusTotalScanning -> "VirusTotal: ${virusTotalProgress.first}/${virusTotalProgress.second}"
-                else -> "Tap to scan"
+                else -> "Нажмите для проверки"
             },
             style = MaterialTheme.typography.titleMedium,
             color = when {
@@ -251,7 +244,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         // Stats Cards
         Row(
@@ -262,62 +255,76 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.CheckCircle,
                 iconTint = GuardianGreen,
-                title = "Scanned",
+                title = "Проверено",
                 value = stats.appsScanned.toString()
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Block,
                 iconTint = GuardianRed,
-                title = "Threats",
+                title = "Угрозы",
                 value = stats.threatsBlocked.toString()
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Warning,
                 iconTint = GuardianYellow,
-                title = "In List",
+                title = "В списке",
                 value = blacklist.size.toString()
             )
         }
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Scan Results
-        if (scanResults.isNotEmpty() || virusTotalResults.isNotEmpty()) {
-            val totalThreats = scanResults.size + virusTotalResults.values.count { it.isInfected }
+        // Toggle for showing all apps or only threats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = "Threats Found ($totalThreats)",
+                text = if (showAllApps) "Все приложения" else "Обнаруженные угрозы",
                 style = MaterialTheme.typography.titleMedium,
-                color = GuardianRed,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
             
+            TextButton(onClick = { showAllApps = !showAllApps }) {
+                Text(
+                    text = if (showAllApps) "Только угрозы" else "Показать все",
+                    color = GuardianBlue
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Apps List
+        val displayedApps = if (showAllApps) {
+            scanResults
+        } else {
+            scanResults.filter { it.isThreat }
+        }
+        
+        if (displayedApps.isNotEmpty()) {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                // Local scan results
-                items(scanResults) { (appName, reason) ->
-                    ThreatItem(
-                        appName = appName,
-                        reason = reason,
-                        icon = Icons.Default.Warning,
-                        iconTint = GuardianRed
-                    )
-                }
-                
-                // VirusTotal results
-                items(virusTotalResults.filter { it.value.isInfected }.toList()) { (packageName, result) ->
-                    VirusTotalThreatItem(
-                        packageName = packageName,
-                        result = result
+                items(displayedApps) { app ->
+                    AppListItem(
+                        app = app,
+                        onAddToBlacklist = { 
+                            viewModel.addToBlacklist(app.appName, app.packageName)
+                        }
                     )
                 }
             }
-        } else if (!isScanning && !isVirusTotalScanning && stats.appsScanned > 0) {
+        } else if (!isScanning && !isVirusTotalScanning && scanResults.isNotEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -331,17 +338,41 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "No threats found",
+                        text = if (showAllApps) "Нет приложений" else "Угроз не обнаружено",
                         style = MaterialTheme.typography.titleMedium,
                         color = GuardianGreen
                     )
                     if (stats.lastScanTime > 0) {
                         Text(
-                            text = "Last scan: ${formatTime(stats.lastScanTime)}",
+                            text = "Последнее сканирование: ${formatTime(stats.lastScanTime)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
                     }
+                }
+            }
+        } else if (!isScanning && scanResults.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Нажмите на кнопку для сканирования",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
                 }
             }
         }
@@ -353,24 +384,24 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             onDismissRequest = { showVirusTotalDialog = false },
             containerColor = GuardianSurface,
             title = { 
-                Text("VirusTotal Scan", color = Color.White, fontWeight = FontWeight.Bold) 
+                Text("VirusTotal", color = Color.White, fontWeight = FontWeight.Bold) 
             },
             text = {
                 Column {
                     Text(
-                        text = "This will scan all installed apps using the VirusTotal database.",
+                        text = "Сканирование через базу VirusTotal использует облачную проверку файлов по SHA-256 хэшу.",
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "⚠️ Note: Free API limit is 4 requests per minute. Full scan may take a while.",
+                        text = "⚠️ Лимит бесплатного API: 4 запроса в минуту. Полное сканирование может занять много времени.",
                         color = GuardianYellow,
                         style = MaterialTheme.typography.bodySmall
                     )
                     if (!viewModel.isVirusTotalApiKeyConfigured()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "⚠️ API Key not configured. Please add it in the code.",
+                            text = "⚠️ API ключ не настроен. Добавьте его в Настройках.",
                             color = GuardianRed,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -384,12 +415,12 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                         viewModel.startVirusTotalScan()
                     }
                 ) {
-                    Text("Start Scan", color = GuardianBlue)
+                    Text("Запустить", color = GuardianBlue)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showVirusTotalDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Отмена", color = Color.Gray)
                 }
             }
         )
@@ -436,15 +467,15 @@ private fun StatCard(
 }
 
 @Composable
-private fun ThreatItem(
-    appName: String,
-    reason: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconTint: Color
+private fun AppListItem(
+    app: AppScanResult,
+    onAddToBlacklist: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+        colors = CardDefaults.cardColors(
+            containerColor = if (app.isThreat) GuardianSurface else GuardianSurface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -452,18 +483,35 @@ private fun ThreatItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // App icon placeholder
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(iconTint.copy(alpha = 0.2f)),
+                    .background(
+                        when {
+                            app.isThreat -> GuardianRed.copy(alpha = 0.2f)
+                            app.isSystemApp -> GuardianBlue.copy(alpha = 0.1f)
+                            else -> GuardianGreen.copy(alpha = 0.1f)
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    imageVector = when {
+                        app.isThreat -> Icons.Default.Warning
+                        app.virusTotalResult != null -> Icons.Default.BugReport
+                        app.isSystemApp -> Icons.Default.Android
+                        else -> Icons.Default.CheckCircle
+                    },
                     contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp)
+                    tint = when {
+                        app.isThreat -> GuardianRed
+                        app.virusTotalResult != null -> GuardianYellow
+                        app.isSystemApp -> GuardianBlue
+                        else -> GuardianGreen
+                    },
+                    modifier = Modifier.size(22.dp)
                 )
             }
             
@@ -471,82 +519,61 @@ private fun ThreatItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = appName,
+                    text = app.appName,
                     style = MaterialTheme.typography.titleSmall,
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = reason,
+                    text = app.packageName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = iconTint
+                    color = Color.Gray
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun VirusTotalThreatItem(
-    packageName: String,
-    result: VirusTotalResult
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val pm = context.packageManager
-    val appName = remember(packageName) {
-        try {
-            pm.getApplicationLabel(
-                pm.getApplicationInfo(packageName, 0)
-            ).toString()
-        } catch (e: Exception) {
-            packageName
-        }
-    }
-    
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = GuardianSurface)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(GuardianRed.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.BugReport,
-                    contentDescription = null,
-                    tint = GuardianRed,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = appName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "${result.malwareName ?: "Detected"} (${result.detectedBy}/${result.totalScanners})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = GuardianRed
-                )
-                result.scanDate?.let { date ->
+                if (app.isThreat && app.threatType.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Scanned: $date",
+                        text = app.threatType,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = GuardianRed
+                    )
+                }
+                if (app.virusTotalResult != null && !app.virusTotalResult.isInfected) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Безопасно (${app.virusTotalResult.detectedBy}/${app.virusTotalResult.totalScanners})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GuardianGreen
+                    )
+                }
+            }
+            
+            // System app badge
+            if (app.isSystemApp && !app.isThreat) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = GuardianBlue.copy(alpha = 0.2f)
+                ) {
+                    Text(
+                        text = "Системное",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GuardianBlue,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            
+            // Add to blacklist button for threats
+            if (app.isThreat) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onAddToBlacklist,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Block,
+                        contentDescription = "Добавить в черный список",
+                        tint = GuardianRed,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
