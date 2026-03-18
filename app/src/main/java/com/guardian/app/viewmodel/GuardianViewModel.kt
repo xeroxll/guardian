@@ -1,8 +1,10 @@
 package com.guardian.app.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.guardian.app.data.api.ScanResult
@@ -783,7 +785,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
     }
     
     // APK Scanner - scan a single APK file using URI
-    fun scanApkUri(context: Context, uri: android.net.Uri, onResult: (Boolean, String) -> Unit) {
+    fun scanApkUri(context: Context, uri: Uri, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             try {
                 val pm = context.packageManager
@@ -817,7 +819,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                 }
                 
                 val packageName = packageInfo.packageName
-                val appName = packageInfo.applicationInfo?.let { pm.getApplicationLabel(it).toString() } ?: packageName
+                val appName = packageInfo.applicationInfo?.let { appInfo -> pm.getApplicationLabel(appInfo).toString() } ?: packageName
                 
                 // Scan via VirusTotal if API key is configured
                 if (isVirusTotalApiKeyConfigured()) {
@@ -848,7 +850,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     }
                 } else {
                     // Basic scan without VirusTotal
-                    val dangerousPerms = packageInfo.requestedPermissions?.filter { perm ->
+                    val dangerousPerms = packageInfo.requestedPermissions?.filter { perm: String ->
                         perm.contains("READ_SMS") || perm.contains("SEND_SMS") || 
                         perm.contains("READ_CONTACTS") || perm.contains("CAMERA") ||
                         perm.contains("RECORD_AUDIO") || perm.contains("ACCESS_FINE_LOCATION")
@@ -856,7 +858,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     
                     if (dangerousPerms.isNotEmpty()) {
                         NotificationHelper.showThreatFoundNotification(context, appName, "Опасные разрешения: ${dangerousPerms.size}")
-                        onResult(true, "⚠️ Опасные разрешения: ${dangerousPerms.joinToString { it.substringAfterLast(".") }}")
+                        onResult(true, "⚠️ Опасные разрешения: ${dangerousPerms.joinToString { perm: String -> perm.substringAfterLast(".") }}")
                     } else {
                         onResult(false, "✅ Безопасно (нет опасных разрешений)")
                     }
