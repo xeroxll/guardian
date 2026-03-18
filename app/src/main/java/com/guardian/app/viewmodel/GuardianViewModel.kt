@@ -241,6 +241,9 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                 
                 // Known trusted apps (popular legitimate apps that should never be flagged)
                 val trustedApps = setOf(
+                    // Own app
+                    "com.guardian.app",
+                    
                     // Google apps
                     "com.google.android.youtube",
                     "com.google.android.apps.youtube.music",
@@ -271,12 +274,90 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     "com.whatsapp.w4b",  // Business
                     "org.telegram.messenger",
                     "org.telegram.messenger.web",
+                    "org.telegram.plus",  // Telegram Plus
                     "com.viber.voip",
                     "com.skype.raider",
                     "com.linkedin.android",
                     "com.discord",
                     "com.zhiliaoapp.musically",  // TikTok
                     "com.ss.android.ugc.trill",
+                    
+                    // Chinese Social Media
+                    "com.tencent.mm",  // WeChat
+                    "com.tencent.mobileqq",  // QQ
+                    "com.sina.weibo",  // Weibo
+                    "com.ss.android.article.news",  // Toutiao
+                    "com.xingin.xhs",  // Xiaohongshu
+                    "tv.danmaku.bili",  // Bilibili
+                    "com.Qunar",  // Qunar
+                    "com.autonavi.minimap",  // Amap/Gaode
+                    
+                    // Russian Social/Games
+                    "ru.mail.mailapp",  // Mail.ru
+                    "ru.mail.android.my",  // My World
+                    "com.mgerrit",  
+                    "com.playrix.fishdom",
+                    "com.playrix.township",
+                    "com.playrix.homescapes",
+                    "com.playrix.gardenscapes",
+                    "com.wargaming.wot.blitz",  // World of Tanks
+                    "com.lab666",
+                    "ru.vk.store",
+                    "ru.dublgis.dgismobile",  // 2GIS
+                    
+                    // Carriers/Operator apps
+                    "ru.megafon.mlk",  // MegaFon
+                    "ru.megafon.mlk.enterprise",
+                    "com.megafon.digital",
+                    "ru.mts.mymts",  // MTS
+                    "ru.beeline.services",  // Beeline
+                    "ru.beeline.b2c",
+                    "ru.tele2.mytele2",  // Tele2
+                    "ru.tele2.twa",
+                    "ru.rtk.it",  // Rostelecom
+                    "com.tinkoff.mvno",  // Tinkoff Mobile
+                    "com.yota.android",  // Yota
+                    
+                    // Food delivery
+                    "com.deliveryclub",
+                    "com.deliveryclub.partner",
+                    "com.samokat.android",
+                    "ru.chibbis.base",
+                    "ru.pizza.android",
+                    
+                    // Sports/Fitness
+                    "com.nike.ntc",  // Nike Training
+                    "com.nike.nrc",  // Nike Run
+                    "com.strava",
+                    "com.endomondo.android",
+                    "com.sports.tracker",
+                    
+                    // News
+                    "ru.rambler.news",
+                    "ru.rambler.mail",
+                    "com.gismeteo.gismeteo",
+                    
+                    // Other popular
+                    "com.ubercab.driver",  // Uber Driver
+                    "com.whatsapp.gbmods.gbwhatsapp",  // GBWhatsApp (popular mod)
+                    "com.whatsapp.gbmods.gbwhatsapp2",
+                    "com.gbwhatsapp",  // Another GBWhatsApp
+                    
+                    // More Chinese apps
+                    "com.tencent.mobileqqi",  // QQ International
+                    "com.tencent.qqlite",  // QQ Lite
+                    "com.tencent.tim",  // TIM
+                    "com.baidu.BaiduMap",
+                    "com.baidu.searchbox",
+                    "com.jingdong.app.mall",  // JD.com
+                    "com.suning.mobile.ebuy",  // Suning
+                    "com.tmall.wireless",  // Tmall
+                    "com.taobao.taobao",  // Taobao
+                    "com.eg.android.AlipayGphone",  // Alipay
+                    "com.netease.cloudmusic",  // NetEase Music
+                    "com.kugou.android",  // Kugou
+                    "com.kuwo.player",  // Kuwo
+                    "com.xiami.muslim",  // Xiami
                     
                     // Banking (major banks - add more as needed)
                     "ru.sberbankmobile",
