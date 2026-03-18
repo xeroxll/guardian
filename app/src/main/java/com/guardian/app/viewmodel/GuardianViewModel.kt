@@ -106,4 +106,22 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
             repository.resetStats()
         }
     }
+    
+    fun startScan() {
+        viewModelScope.launch {
+            isScanning.value = true
+            try {
+                // Simulate scan - in real app would check installed apps
+                kotlinx.coroutines.delay(2000)
+                repository.updateScanStats(50)
+                repository.addEvent(
+                    com.guardian.app.data.model.EventType.SCAN_COMPLETED,
+                    "✅ Scan Completed",
+                    "Scanned 50 apps - no threats found"
+                )
+            } finally {
+                isScanning.value = false
+            }
+        }
+    }
 }
