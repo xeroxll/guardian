@@ -353,7 +353,8 @@ fun HomeScreen(
 private fun EventItem(
     title: String,
     description: String,
-    time: String
+    time: String,
+    textColor: Color = Color.White
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -429,6 +430,7 @@ private fun StatCard(
     iconTint: Color,
     title: String,
     value: String,
+    textColor: Color = Color.White,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -469,6 +471,7 @@ private fun QuickActionCard(
     title: String,
     subtitle: String,
     iconTint: Color,
+    textColor: Color = Color.White,
     onClick: () -> Unit
 ) {
     Card(
