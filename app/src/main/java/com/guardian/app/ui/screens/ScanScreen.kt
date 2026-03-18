@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.guardian.app.data.api.VirusTotalResult
 import com.guardian.app.ui.theme.*
 import com.guardian.app.viewmodel.GuardianViewModel
@@ -83,11 +85,14 @@ fun ScanScreen(viewModel: GuardianViewModel) {
         label = "rotation"
     )
     
+    val scrollState = rememberScrollState()
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
             .padding(16.dp)
+            .verticalScroll(scrollState)
     ) {
         // Header
         Text(
@@ -97,7 +102,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Проверка установленных приложений",
+            text = "Проверка установленных приложений на вирусы",
             style = MaterialTheme.typography.bodyMedium,
             color = grayText
         )
@@ -347,23 +352,26 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.CheckCircle,
-                iconTint = GuardianGreen,
+                iconTint = if (isDarkTheme) GuardianGreen else GuardianGreenLight,
                 title = "Проверено",
-                value = stats.appsScanned.toString()
+                value = stats.appsScanned.toString(),
+                isDarkTheme = isDarkTheme
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Block,
-                iconTint = GuardianRed,
+                iconTint = if (isDarkTheme) GuardianRed else GuardianRedLight,
                 title = "Угрозы",
-                value = stats.threatsBlocked.toString()
+                value = stats.threatsBlocked.toString(),
+                isDarkTheme = isDarkTheme
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Warning,
-                iconTint = GuardianYellow,
+                iconTint = if (isDarkTheme) GuardianYellow else GuardianYellowLight,
                 title = "В списке",
-                value = blacklist.size.toString()
+                value = blacklist.size.toString(),
+                isDarkTheme = isDarkTheme
             )
         }
         
@@ -400,11 +408,11 @@ fun ScanScreen(viewModel: GuardianViewModel) {
         }
         
         if (displayedApps.isNotEmpty()) {
-            LazyColumn(
+            Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(displayedApps) { app ->
+                displayedApps.forEach { app ->
                     AppListItem(
                         app = app,
                         isBlacklisted = blacklist.any { it.packageName == app.packageName },
@@ -418,15 +426,17 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                         onUninstall = {
                             val intent = viewModel.getUninstallIntent(app.packageName)
                             context.startActivity(intent)
-                        }
+                        },
+                        isDarkTheme = isDarkTheme
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         } else if (!isVirusTotalScanning && scanResults.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -453,11 +463,12 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         } else if (!isVirusTotalScanning && scanResults.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -471,12 +482,13 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Нажмите на кнопку для сканирования",
+                        text = "Нажмите на кнопку для сканирования вирусов",
                         style = MaterialTheme.typography.bodyMedium,
                         color = grayText
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
     
@@ -578,7 +590,9 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                                         showVirusTotalAppPicker = false
                                         viewModel.scanSingleAppWithVirusTotal(packageName, appName)
                                     },
-                                colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDarkTheme) GuardianSurface else GuardianSurfaceLight
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -589,7 +603,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                                     Icon(
                                         imageVector = Icons.Default.Apps,
                                         contentDescription = null,
-                                        tint = GuardianBlue,
+                                        tint = if (isDarkTheme) GuardianBlue else GuardianBlueLight,
                                         modifier = Modifier.size(32.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -764,12 +778,18 @@ private fun StatCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     iconTint: Color,
     title: String,
-    value: String
+    value: String,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
 ) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkTheme) GuardianSurface else GuardianSurfaceLight
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isDarkTheme) 0.dp else 2.dp
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -785,13 +805,13 @@ private fun StatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isSystemInDarkTheme()) Color.White else Color(0xFF1E293B),
+                color = if (isDarkTheme) Color.White else Color(0xFF1E293B),
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isSystemInDarkTheme()) Color.Gray else Color(0xFF64748B)
+                color = if (isDarkTheme) Color.Gray else Color(0xFF64748B)
             )
         }
     }
@@ -803,9 +823,9 @@ private fun AppListItem(
     isBlacklisted: Boolean,
     onAddToBlacklist: () -> Unit,
     onRemoveFromBlacklist: () -> Unit,
-    onUninstall: () -> Unit
+    onUninstall: () -> Unit,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
     val textColor = if (isDarkTheme) Color.White else Color(0xFF1E293B)
     val grayText = if (isDarkTheme) Color.Gray else Color(0xFF64748B)
     val cardBackground = if (isDarkTheme) GuardianSurface else GuardianSurfaceLight

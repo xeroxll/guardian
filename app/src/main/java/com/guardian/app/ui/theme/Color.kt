@@ -34,9 +34,10 @@ val GuardianBlue = Color(0xFF60A5FA)
 val GuardianPink = Color(0xFFF472B6)
 
 // Light Theme Colors - Modern Elegant Design
-val GuardianBackgroundLight = Color(0xFFF0F4F8)
+val GuardianBackgroundLight = Color(0xFFF8FAFC)
 val GuardianSurfaceLight = Color(0xFFFFFFFF)
-val GuardianSurfaceVariantLight = Color(0xFFE8EDF2)
+val GuardianSurfaceVariantLight = Color(0xFFE2E8F0)
+val GuardianSurfaceVariant = Color(0xFF1A1C26)
 val GuardianPrimaryLight = Color(0xFF4F46E5)
 val GuardianGreenLight = Color(0xFF059669)
 val GuardianRedLight = Color(0xFFDC2626)
