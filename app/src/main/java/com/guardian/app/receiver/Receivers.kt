@@ -18,6 +18,61 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+// Top-level notification helper
+private fun showNotification(context: Context, title: String, message: String) {
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    
+    val intent = Intent(context, MainActivity::class.java)
+    val pendingIntent = PendingIntent.getActivity(
+        context, 0, intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    
+    val notification = NotificationCompat.Builder(context, GuardianApp.CHANNEL_ALERTS)
+        .setSmallIcon(R.drawable.ic_shield)
+        .setContentTitle(title)
+        .setContentText(message)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setContentIntent(pendingIntent)
+        .setAutoCancel(true)
+        .build()
+    
+    notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+}
+
+private fun getAppName(context: Context, packageName: String): String {
+    return try {
+        val pm = context.packageManager
+        val appInfo = pm.getApplicationInfo(packageName, 0)
+        pm.getApplicationLabel(appInfo).toString()
+    } catch (e: PackageManager.NameNotFoundException) {
+        packageName
+    }
+}
+
+private fun tryUninstallApp(context: Context, packageName: String) {
+    try {
+        val intent = Intent(Intent.ACTION_DELETE)
+        intent.data = android.net.Uri.parse("package:$packageName")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Cannot uninstall - try to disable
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val pm = context.packageManager
+                pm.setApplicationEnabledSetting(
+                    packageName,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    0
+                )
+            }
+        } catch (e: Exception) {
+            // Cannot disable either
+        }
+    }
+}
+
 class PackageMonitorReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val packageName = intent.data?.schemeSpecificPart ?: return
@@ -34,7 +89,6 @@ class PackageMonitorReceiver : BroadcastReceiver() {
                     val appName = getAppName(context, packageName)
                     
                     if (isBlocked) {
-                        // Try to uninstall the app
                         tryUninstallApp(context, packageName)
                         
                         repository.addEvent(
@@ -69,67 +123,11 @@ class PackageMonitorReceiver : BroadcastReceiver() {
             }
         }
     }
-    
-    private fun getAppName(context: Context, packageName: String): String {
-        return try {
-            val pm = context.packageManager
-            val appInfo = pm.getApplicationInfo(packageName, 0)
-            pm.getApplicationLabel(appInfo).toString()
-        } catch (e: PackageManager.NameNotFoundException) {
-            packageName
-        }
-    }
-    
-    private fun tryUninstallApp(context: Context, packageName: String) {
-        try {
-            val intent = Intent(Intent.ACTION_DELETE)
-            intent.data = android.net.Uri.parse("package:$packageName")
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            // Cannot uninstall - try to disable
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    val pm = context.packageManager
-                    pm.setApplicationEnabledSetting(
-                        packageName,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        0
-                    )
-                }
-            } catch (e: Exception) {
-                // Cannot disable either
-            }
-        }
-    }
-    
-    private fun showNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
-        val intent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        val notification = NotificationCompat.Builder(context, GuardianApp.CHANNEL_ALERTS)
-            .setSmallIcon(R.drawable.ic_shield)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
-    }
 }
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            // In a real app, would start a foreground service for monitoring
-            // For now, just log the boot event
             CoroutineScope(Dispatchers.IO).launch {
                 val repository = GuardianRepository(context)
                 repository.addEvent(
