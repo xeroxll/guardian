@@ -26,7 +26,9 @@ enum class EventType {
     APP_REMOVED,
     PROTECTION_ENABLED,
     PROTECTION_DISABLED,
-    SCAN_COMPLETED
+    SCAN_COMPLETED,
+    SMS_BLOCKED,
+    CALL_BLOCKED
 }
 
 data class AppStats(

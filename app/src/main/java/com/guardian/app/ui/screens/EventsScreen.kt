@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,23 +25,28 @@ import java.util.*
 @Composable
 fun EventsScreen(viewModel: GuardianViewModel) {
     val events by viewModel.events.collectAsState()
+    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    
+    val backgroundColor = if (isDarkTheme) GuardianBackground else GuardianBackgroundLight
+    val textColor = if (isDarkTheme) Color.White else Color(0xFF1E293B)
+    val grayText = if (isDarkTheme) Color.Gray else Color(0xFF64748B)
     
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(GuardianBackground)
+            .background(backgroundColor)
             .padding(16.dp)
     ) {
         Text(
             text = "События",
             style = MaterialTheme.typography.headlineLarge,
-            color = Color.White,
+            color = textColor,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = "Журнал активности",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
+            color = grayText
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -61,7 +67,7 @@ fun EventsScreen(viewModel: GuardianViewModel) {
                     Text(
                         text = "Нет событий",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.Gray
+                        color = grayText
                     )
                 }
             }
@@ -79,6 +85,10 @@ fun EventsScreen(viewModel: GuardianViewModel) {
 
 @Composable
 private fun EventItem(event: SecurityEvent) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val textColor = if (isDarkTheme) Color.White else Color(0xFF1E293B)
+    val grayText = if (isDarkTheme) Color.Gray else Color(0xFF64748B)
+    
     val (icon, iconColor, bgColor) = when (event.type) {
         EventType.USB_ENABLED, EventType.USB_DISABLED -> Triple(Icons.Default.Usb, GuardianBlue, GuardianBlue.copy(alpha = 0.1f))
         EventType.APP_BLOCKED -> Triple(Icons.Default.Block, GuardianRed, GuardianRed.copy(alpha = 0.1f))
@@ -87,6 +97,8 @@ private fun EventItem(event: SecurityEvent) {
         EventType.PROTECTION_ENABLED -> Triple(Icons.Default.Shield, GuardianGreen, GuardianGreen.copy(alpha = 0.1f))
         EventType.PROTECTION_DISABLED -> Triple(Icons.Default.ShieldMoon, GuardianRed, GuardianRed.copy(alpha = 0.1f))
         EventType.SCAN_COMPLETED -> Triple(Icons.Default.CheckCircle, GuardianPrimary, GuardianPrimary.copy(alpha = 0.1f))
+        EventType.SMS_BLOCKED -> Triple(Icons.Default.Message, GuardianRed, GuardianRed.copy(alpha = 0.1f))
+        EventType.CALL_BLOCKED -> Triple(Icons.Default.Phone, GuardianRed, GuardianRed.copy(alpha = 0.1f))
     }
     
     val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
@@ -122,20 +134,20 @@ private fun EventItem(event: SecurityEvent) {
                 Text(
                     text = event.title.replace(Regex("[📱🔍✅⚠️🦠⏳❌🔌📞]"), "").trim(),
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
+                    color = textColor,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = event.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = grayText
                 )
             }
             
             Text(
                 text = time,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.DarkGray
+                color = grayText
             )
         }
     }
