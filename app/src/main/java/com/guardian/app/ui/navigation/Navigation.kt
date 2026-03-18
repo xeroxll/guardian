@@ -22,6 +22,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Scan : Screen("scan", "Сканер", Icons.Default.Security)
     object Events : Screen("events", "Журнал", Icons.Default.History)
     object Settings : Screen("settings", "Настройки", Icons.Default.Settings)
+    object TrustedApps : Screen("trusted_apps", "Доверенные", Icons.Default.Star)
 }
 
 val screens = listOf(Screen.Home, Screen.Scan, Screen.Events, Screen.Settings)
@@ -79,9 +80,22 @@ fun GuardianNavigation() {
                     }
                 }
             }
-            composable(Screen.Scan.route) { ScanScreen(viewModel) }
+            composable(Screen.Scan.route) { 
+                ScanScreen(
+                    viewModel = viewModel,
+                    onNavigateToTrustedApps = {
+                        navController.navigate(Screen.TrustedApps.route)
+                    }
+                ) 
+            }
             composable(Screen.Events.route) { EventsScreen(viewModel) }
             composable(Screen.Settings.route) { SettingsScreen(viewModel) }
+            composable(Screen.TrustedApps.route) { 
+                TrustedAppsScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                ) 
+            }
         }
     }
 }

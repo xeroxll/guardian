@@ -46,7 +46,10 @@ data class AppScanResult(
 )
 
 @Composable
-fun ScanScreen(viewModel: GuardianViewModel) {
+fun ScanScreen(
+    viewModel: GuardianViewModel,
+    onNavigateToTrustedApps: () -> Unit = {}
+) {
     val context = LocalContext.current
     val stats by viewModel.stats.collectAsState()
     val blacklist by viewModel.blacklist.collectAsState()
@@ -367,7 +370,9 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                 isDarkTheme = isDarkTheme
             )
             StatCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToTrustedApps() },
                 icon = Icons.Default.Star,
                 iconTint = if (isDarkTheme) GuardianYellow else GuardianYellowLight,
                 title = "Доверенные",
