@@ -16,6 +16,7 @@ import com.guardian.app.data.model.EventType
 import com.guardian.app.data.model.ScanHistory
 import com.guardian.app.data.model.ScanType
 import com.guardian.app.data.model.SecurityEvent
+import com.guardian.app.data.model.TrustedApp
 import com.guardian.app.data.notification.NotificationHelper
 import com.guardian.app.data.repository.GuardianRepository
 import kotlinx.coroutines.flow.*
@@ -53,6 +54,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
     
     // Data
     val blacklist = repository.blacklist.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val trustedApps = repository.trustedApps.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val events = repository.events.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val stats = repository.stats.stateIn(viewModelScope, SharingStarted.Eagerly, AppStats())
     val scanHistory = repository.scanHistory.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -138,12 +140,34 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
     fun addToBlacklist(name: String, packageName: String) {
         viewModelScope.launch {
             repository.addToBlacklist(BlacklistedApp(name = name, packageName = packageName))
+            // Remove from trusted if it was there
+            val trusted = trustedApps.value.find { it.packageName == packageName }
+            trusted?.let { repository.removeFromTrustedApps(it.id) }
         }
     }
     
     fun removeFromBlacklist(id: String) {
         viewModelScope.launch {
             repository.removeFromBlacklist(id)
+        }
+    }
+    
+    // Trusted apps (whitelist) operations
+    fun addToTrustedApps(name: String, packageName: String) {
+        viewModelScope.launch {
+            repository.addToTrustedApps(TrustedApp(name = name, packageName = packageName))
+            repository.addEvent(
+                EventType.APP_BLOCKED,
+                "✅ Добавлен в доверенные",
+                "$packageName добавлен в список доверенных приложений",
+                packageName
+            )
+        }
+    }
+    
+    fun removeFromTrustedApps(id: String) {
+        viewModelScope.launch {
+            repository.removeFromTrustedApps(id)
         }
     }
     
@@ -346,6 +370,14 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     // MAX streaming
                     "com.max.app",  // MAX (HBO Max)
                     "com.wb.max",
+                    "com.max.go",   // MAX GO
+                    "com.hbo.max",  // HBO Max
+                    
+                    // Messenger MAX (popular messenger)
+                    "com.max.messenger",
+                    "com.max.messenger.app",
+                    "ru.max.messenger",
+                    "com.maxim.messenger",
                     
                     // Classifieds
                     "ru.avito",  // Avito
@@ -475,23 +507,29 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     "com.adobe.reader"
                 )
                 
+                // Get current trusted apps for checking
+                val currentTrustedApps = trustedApps.value.map { it.packageName }.toSet()
+                
                 // Check each app
                 for (packageInfo in packages) {
                     val packageName = packageInfo.packageName.lowercase()
                     val appName = pm.getApplicationLabel(packageInfo).toString()
                     val isSystemApp = (packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
                                        (packageInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                    val isTrusted = currentTrustedApps.contains(packageInfo.packageName) || 
+                                    currentTrustedApps.any { packageInfo.packageName == it }
                     
-                    // Skip trusted apps immediately
+                    // Skip trusted apps and system apps immediately
                     if (trustedApps.contains(packageInfo.packageName) || 
                         trustedApps.any { packageName == it.lowercase() } ||
-                        isSystemApp) {
+                        isSystemApp ||
+                        isTrusted) {
                         // Add as safe app
                         val scanResult = com.guardian.app.ui.screens.AppScanResult(
                             packageName = packageInfo.packageName,
                             appName = appName,
                             isThreat = false,
-                            threatType = "",
+                            threatType = if (isTrusted) "Доверенное приложение" else "",
                             isSystemApp = isSystemApp
                         )
                         scanResultsData.add(scanResult)

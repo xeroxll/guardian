@@ -9,6 +9,13 @@ data class BlacklistedApp(
     val addedAt: Long = System.currentTimeMillis()
 )
 
+data class TrustedApp(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val packageName: String,
+    val addedAt: Long = System.currentTimeMillis()
+)
+
 data class SecurityEvent(
     val id: String = UUID.randomUUID().toString(),
     val type: EventType,

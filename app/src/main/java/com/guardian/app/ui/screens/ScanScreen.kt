@@ -367,10 +367,10 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             )
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Warning,
+                icon = Icons.Default.Star,
                 iconTint = if (isDarkTheme) GuardianYellow else GuardianYellowLight,
-                title = "В списке",
-                value = blacklist.size.toString(),
+                title = "Доверенные",
+                value = trustedApps.size.toString(),
                 isDarkTheme = isDarkTheme
             )
         }
@@ -416,12 +416,20 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     AppListItem(
                         app = app,
                         isBlacklisted = blacklist.any { it.packageName == app.packageName },
+                        isTrusted = trustedApps.any { it.packageName == app.packageName },
                         onAddToBlacklist = { 
                             viewModel.addToBlacklist(app.appName, app.packageName)
                         },
                         onRemoveFromBlacklist = {
                             val blacklistedApp = blacklist.find { it.packageName == app.packageName }
                             blacklistedApp?.let { viewModel.removeFromBlacklist(it.id) }
+                        },
+                        onAddToTrusted = {
+                            viewModel.addToTrustedApps(app.appName, app.packageName)
+                        },
+                        onRemoveFromTrusted = {
+                            val trustedApp = trustedApps.find { it.packageName == app.packageName }
+                            trustedApp?.let { viewModel.removeFromTrustedApps(it.id) }
                         },
                         onUninstall = {
                             val intent = viewModel.getUninstallIntent(app.packageName)
@@ -816,8 +824,11 @@ private fun StatCard(
 private fun AppListItem(
     app: AppScanResult,
     isBlacklisted: Boolean,
+    isTrusted: Boolean,
     onAddToBlacklist: () -> Unit,
     onRemoveFromBlacklist: () -> Unit,
+    onAddToTrusted: () -> Unit,
+    onRemoveFromTrusted: () -> Unit,
     onUninstall: () -> Unit,
     isDarkTheme: Boolean = isSystemInDarkTheme()
 ) {
@@ -843,6 +854,7 @@ private fun AppListItem(
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         when {
+                            isTrusted -> GuardianGreen.copy(alpha = 0.2f)
                             app.isThreat -> GuardianRed.copy(alpha = 0.2f)
                             app.isSystemApp -> GuardianBlue.copy(alpha = 0.1f)
                             else -> GuardianGreen.copy(alpha = 0.1f)
@@ -852,6 +864,7 @@ private fun AppListItem(
             ) {
                 Icon(
                     imageVector = when {
+                        isTrusted -> Icons.Default.CheckCircle
                         app.isThreat -> Icons.Default.Warning
                         app.virusTotalResult != null -> Icons.Default.BugReport
                         app.isSystemApp -> Icons.Default.Android
@@ -859,6 +872,7 @@ private fun AppListItem(
                     },
                     contentDescription = null,
                     tint = when {
+                        isTrusted -> GuardianGreen
                         app.isThreat -> GuardianRed
                         app.virusTotalResult != null -> GuardianYellow
                         app.isSystemApp -> GuardianBlue
@@ -882,7 +896,14 @@ private fun AppListItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = grayText
                 )
-                if (app.isThreat && app.threatType.isNotEmpty()) {
+                if (isTrusted) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "✓ Доверенное",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GuardianGreen
+                    )
+                } else if (app.isThreat && app.threatType.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = app.threatType,
@@ -901,7 +922,7 @@ private fun AppListItem(
             }
             
             // System app badge
-            if (app.isSystemApp && !app.isThreat) {
+            if (app.isSystemApp && !app.isThreat && !isTrusted) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
                     color = GuardianBlue.copy(alpha = 0.2f)
@@ -915,8 +936,23 @@ private fun AppListItem(
                 }
             }
             
+            // Trusted badge
+            if (isTrusted) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = GuardianGreen.copy(alpha = 0.2f)
+                ) {
+                    Text(
+                        text = "Доверенное",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GuardianGreen,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            
             // Add/Remove from blacklist button for threats
-            if (app.isThreat || isBlacklisted) {
+            if ((app.isThreat || isBlacklisted) && !isTrusted) {
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = if (isBlacklisted) onRemoveFromBlacklist else onAddToBlacklist,
@@ -931,8 +967,22 @@ private fun AppListItem(
                 }
             }
             
+            // Trust / Untrust button (checkmark) - shown for threats or any app
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = if (isTrusted) onRemoveFromTrusted else onAddToTrusted,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (isTrusted) Icons.Default.CheckCircle else Icons.Default.CheckCircle,
+                    contentDescription = if (isTrusted) "Удалить из доверенных" else "Добавить в доверенные",
+                    tint = if (isTrusted) GuardianGreen else grayText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
             // Uninstall button for threats (non-system apps only)
-            if (app.isThreat && !app.isSystemApp) {
+            if (app.isThreat && !app.isSystemApp && !isTrusted) {
                 Spacer(modifier = Modifier.width(4.dp))
                 IconButton(
                     onClick = onUninstall,

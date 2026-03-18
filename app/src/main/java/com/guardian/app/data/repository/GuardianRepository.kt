@@ -10,6 +10,7 @@ import com.guardian.app.data.model.EventType
 import com.guardian.app.data.model.ScanHistory
 import com.guardian.app.data.model.ScanType
 import com.guardian.app.data.model.SecurityEvent
+import com.guardian.app.data.model.TrustedApp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
@@ -34,6 +35,7 @@ class GuardianRepository(private val context: Context) {
         
         private val USB_DEBUG_ENABLED = booleanPreferencesKey("usb_debug_enabled")
         private val BLACKLIST = stringPreferencesKey("blacklist")
+        private val TRUSTED_APPS = stringPreferencesKey("trusted_apps")
         private val EVENTS = stringPreferencesKey("events")
         private val STATS = stringPreferencesKey("stats")
         private val SCAN_HISTORY = stringPreferencesKey("scan_history")
@@ -109,6 +111,37 @@ class GuardianRepository(private val context: Context) {
         var result = false
         context.dataStore.edit { prefs ->
             result = parseBlacklist(prefs[BLACKLIST] ?: "[]").any { it.packageName == packageName }
+        }
+        return result
+    }
+    
+    // Trusted Apps (Whitelist)
+    val trustedApps: Flow<List<TrustedApp>> = context.dataStore.data.map { prefs ->
+        parseTrustedApps(prefs[TRUSTED_APPS] ?: "[]")
+    }
+    
+    suspend fun addToTrustedApps(app: TrustedApp) {
+        context.dataStore.edit { prefs ->
+            val current = parseTrustedApps(prefs[TRUSTED_APPS] ?: "[]").toMutableList()
+            if (current.none { it.packageName == app.packageName }) {
+                current.add(app)
+                prefs[TRUSTED_APPS] = trustedAppsToJson(current)
+            }
+        }
+    }
+    
+    suspend fun removeFromTrustedApps(id: String) {
+        context.dataStore.edit { prefs ->
+            val current = parseTrustedApps(prefs[TRUSTED_APPS] ?: "[]").toMutableList()
+            current.removeAll { it.id == id }
+            prefs[TRUSTED_APPS] = trustedAppsToJson(current)
+        }
+    }
+    
+    suspend fun isPackageTrusted(packageName: String): Boolean {
+        var result = false
+        context.dataStore.edit { prefs ->
+            result = parseTrustedApps(prefs[TRUSTED_APPS] ?: "[]").any { it.packageName == packageName }
         }
         return result
     }
@@ -205,6 +238,32 @@ class GuardianRepository(private val context: Context) {
         if (list.isEmpty()) return "[]"
         return "[" + list.joinToString(",") { 
             """{"id":"${it.id}","timestamp":${it.timestamp},"appsScanned":${it.appsScanned},"threatsFound":${it.threatsFound},"scanType":"${it.scanType.name}"}""" 
+        } + "]"
+    }
+    
+    private fun parseTrustedApps(json: String): List<TrustedApp> {
+        return try {
+            if (json == "[]" || json.isEmpty()) return emptyList()
+            val list = mutableListOf<TrustedApp>()
+            val items = json.removePrefix("[").removeSuffix("]").split("},{")
+            items.forEach { item ->
+                val clean = item.removePrefix("{").removeSuffix("}")
+                val id = extractValue(clean, "id")
+                val name = extractValue(clean, "name")
+                val packageName = extractValue(clean, "packageName")
+                val addedAt = extractValue(clean, "addedAt").toLongOrNull() ?: 0L
+                if (id.isNotEmpty() && name.isNotEmpty()) {
+                    list.add(TrustedApp(id, name, packageName, addedAt))
+                }
+            }
+            list
+        } catch (e: Exception) { emptyList() }
+    }
+    
+    private fun trustedAppsToJson(list: List<TrustedApp>): String {
+        if (list.isEmpty()) return "[]"
+        return "[" + list.joinToString(",") { 
+            """{"id":"${it.id}","name":"${it.name}","packageName":"${it.packageName}","addedAt":${it.addedAt}}""" 
         } + "]"
     }
     
