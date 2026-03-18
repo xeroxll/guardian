@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.guardian.app.data.api.VirusTotalResult
 import com.guardian.app.ui.theme.*
 import com.guardian.app.viewmodel.GuardianViewModel
@@ -53,9 +54,9 @@ fun ScanScreen(viewModel: GuardianViewModel) {
     val textColor = if (isDarkTheme) Color.White else Color(0xFF1E293B)
     val grayText = if (isDarkTheme) Color.Gray else Color(0xFF64748B)
     
-    var isScanning by remember { mutableStateOf(false) }
     var scanResults by remember { mutableStateOf<List<AppScanResult>>(emptyList()) }
     var showVirusTotalDialog by remember { mutableStateOf(false) }
+    var showVirusTotalAppPicker by remember { mutableStateOf(false) }
     var showApkDialog by remember { mutableStateOf(false) }
     var apkResult by remember { mutableStateOf<String?>(null) }
     var showAllApps by remember { mutableStateOf(false) }
@@ -93,182 +94,172 @@ fun ScanScreen(viewModel: GuardianViewModel) {
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Scan Buttons Row
-        Row(
+        // Scan Buttons
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Quick Scan Button
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
+            // Full VirusTotal Scan Button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .clickable(enabled = !isVirusTotalScanning) {
+                        showVirusTotalDialog = true
+                    },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = GuardianSurface)
             ) {
-                // Glow effect
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(160.dp)
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                colors = listOf(
-                                    if (isScanning) GuardianPrimary.copy(alpha = 0.3f) else GuardianGreen.copy(alpha = 0.2f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                )
-                
-                Card(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clickable(enabled = !isScanning && !isVirusTotalScanning) {
-                            isScanning = true
-                            scanResults = emptyList()
-                            
-                            scope.launch {
-                                val pm = context.packageManager
-                                val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                                val blacklistedPackages = blacklist.map { it.packageName }.toSet()
-                                
-                                val threats = mutableListOf<AppScanResult>()
-                                
-                                for (app in installedApps) {
-                                    val packageName = app.packageName
-                                    val appName = pm.getApplicationLabel(app).toString()
-                                    val isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                                    
-                                    var isThreat = false
-                                    var threatType = ""
-                                    
-                                    // Check blacklist
-                                    if (blacklistedPackages.contains(packageName)) {
-                                        isThreat = true
-                                        threatType = "В черном списке"
-                                    }
-                                    
-                                    // Check VirusTotal results
-                                    val vtResult = virusTotalResults[packageName]
-                                    if (vtResult != null && vtResult.isInfected) {
-                                        isThreat = true
-                                        threatType = "VirusTotal: ${vtResult.malwareName ?: "Обнаружено"}"
-                                    }
-                                    
-                                    threats.add(
-                                        AppScanResult(
-                                            packageName = packageName,
-                                            appName = appName,
-                                            isThreat = isThreat,
-                                            threatType = threatType,
-                                            isSystemApp = isSystemApp,
-                                            virusTotalResult = vtResult
-                                        )
-                                    )
-                                    
-                                    kotlinx.coroutines.delay(1)
-                                }
-                                
-                                scanResults = threats
-                                isScanning = false
-                                viewModel.startScan()
-                            }
-                        },
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isScanning) Icons.Default.Refresh else Icons.Default.Security,
-                            contentDescription = "Быстрая проверка",
-                            modifier = Modifier
-                                .size(48.dp)
-                                .then(if (isScanning) Modifier.rotate(rotation) else Modifier),
-                            tint = if (isScanning) GuardianPrimary else GuardianGreen
-                        )
-                    }
-                }
-            }
-            
-            // VirusTotal Button
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(160.dp)
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                colors = listOf(
-                                    if (isVirusTotalScanning) GuardianYellow.copy(alpha = 0.3f) else GuardianBlue.copy(alpha = 0.2f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                )
-                
-                Card(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clickable(enabled = !isScanning && !isVirusTotalScanning) {
-                            showVirusTotalDialog = true
-                        },
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = GuardianSurface)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(GuardianBlue.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isVirusTotalScanning) Icons.Default.Sync else Icons.Default.BugReport,
                             contentDescription = "VirusTotal",
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(28.dp)
                                 .then(if (isVirusTotalScanning) Modifier.rotate(rotation) else Modifier),
                             tint = if (isVirusTotalScanning) GuardianYellow else GuardianBlue
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Полное сканирование VirusTotal",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Проверить все установленные приложения",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = grayText
+                        )
+                    }
+                }
+            }
+            
+            // Scan Specific App Button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .clickable(enabled = !isVirusTotalScanning) {
+                        showVirusTotalAppPicker = true
+                    },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(GuardianGreen.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Проверить приложение",
+                            modifier = Modifier.size(28.dp),
+                            tint = GuardianGreen
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Проверить приложение",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Выбрать конкретное приложение для сканирования",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = grayText
+                        )
+                    }
+                }
+            }
+            
+            // APK Scan Button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .clickable(enabled = !isVirusTotalScanning) {
+                        showApkDialog = true
+                    },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(GuardianYellow.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Android,
+                            contentDescription = "Сканировать APK",
+                            modifier = Modifier.size(28.dp),
+                            tint = GuardianYellow
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Сканировать APK файл",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Проверить загруженный APK файл",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = grayText
                         )
                     }
                 }
             }
         }
         
-        // APK Scan Button
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        OutlinedButton(
-            onClick = { showApkDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isScanning && !isVirusTotalScanning,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = GuardianBlue
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Android,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Сканировать APK файл")
-        }
-        
         // Scan Status
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = when {
-                isScanning -> "Сканирование..."
                 isVirusTotalScanning -> "VirusTotal: ${virusTotalProgress.first}/${virusTotalProgress.second}"
-                else -> "Нажмите для проверки"
+                else -> "Выберите тип сканирования"
             },
             style = MaterialTheme.typography.titleMedium,
             color = when {
-                isScanning -> GuardianPrimary
                 isVirusTotalScanning -> GuardianYellow
-                else -> Color.Gray
+                else -> grayText
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
@@ -314,7 +305,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             Text(
                 text = if (showAllApps) "Все приложения" else "Обнаруженные угрозы",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = textColor,
                 fontWeight = FontWeight.Bold
             )
             
@@ -358,7 +349,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     )
                 }
             }
-        } else if (!isScanning && !isVirusTotalScanning && scanResults.isNotEmpty()) {
+        } else if (!isVirusTotalScanning && scanResults.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -384,12 +375,12 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                         Text(
                             text = "Последнее сканирование: ${formatTime(stats.lastScanTime)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = grayText
                         )
                     }
                 }
             }
-        } else if (!isScanning && scanResults.isEmpty()) {
+        } else if (!isVirusTotalScanning && scanResults.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -403,13 +394,13 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                         imageVector = Icons.Default.Security,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color.Gray
+                        tint = grayText
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Нажмите на кнопку для сканирования",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = grayText
                     )
                 }
             }
@@ -420,15 +411,15 @@ fun ScanScreen(viewModel: GuardianViewModel) {
     if (showVirusTotalDialog) {
         AlertDialog(
             onDismissRequest = { showVirusTotalDialog = false },
-            containerColor = GuardianSurface,
+            containerColor = surfaceColor,
             title = { 
-                Text("VirusTotal", color = Color.White, fontWeight = FontWeight.Bold) 
+                Text("VirusTotal", color = textColor, fontWeight = FontWeight.Bold) 
             },
             text = {
                 Column {
                     Text(
                         text = "Сканирование через базу VirusTotal использует облачную проверку файлов по SHA-256 хэшу.",
-                        color = Color.Gray
+                        color = grayText
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -458,7 +449,104 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { showVirusTotalDialog = false }) {
-                    Text("Отмена", color = Color.Gray)
+                    Text("Отмена", color = grayText)
+                }
+            }
+        )
+    }
+    
+    // VirusTotal App Picker Dialog
+    if (showVirusTotalAppPicker) {
+        val pm = context.packageManager
+        val allApps = remember {
+            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+                .sortedBy { pm.getApplicationLabel(it).toString() }
+        }
+        var searchQuery by remember { mutableStateOf("") }
+        val filteredApps = allApps.filter {
+            pm.getApplicationLabel(it).toString().lowercase().contains(searchQuery.lowercase()) ||
+            it.packageName.lowercase().contains(searchQuery.lowercase())
+        }
+        
+        AlertDialog(
+            onDismissRequest = { showVirusTotalAppPicker = false },
+            containerColor = surfaceColor,
+            title = { 
+                Text("Выберите приложение", color = textColor, fontWeight = FontWeight.Bold) 
+            },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Поиск...", color = grayText) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedPlaceholderColor = grayText,
+                            unfocusedPlaceholderColor = grayText
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier.height(300.dp)
+                    ) {
+                        items(filteredApps) { app ->
+                            val appName = pm.getApplicationLabel(app).toString()
+                            val packageName = app.packageName
+                            
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        showVirusTotalAppPicker = false
+                                        viewModel.scanSingleAppWithVirusTotal(packageName, appName)
+                                    },
+                                colors = CardDefaults.cardColors(containerColor = GuardianSurface)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Apps,
+                                        contentDescription = null,
+                                        tint = GuardianBlue,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = appName,
+                                            color = textColor,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = packageName,
+                                            color = grayText,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = grayText
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showVirusTotalAppPicker = false }) {
+                    Text("Отмена", color = grayText)
                 }
             }
         )
@@ -471,15 +559,15 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                 showApkDialog = false
                 apkResult = null
             },
-            containerColor = GuardianSurface,
+            containerColor = surfaceColor,
             title = { 
-                Text("Сканирование APK", color = Color.White, fontWeight = FontWeight.Bold) 
+                Text("Сканирование APK", color = textColor, fontWeight = FontWeight.Bold) 
             },
             text = {
                 Column {
                     Text(
                         text = "Выберите APK файл для проверки на вирусы.",
-                        color = Color.Gray
+                        color = grayText
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
@@ -508,7 +596,7 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             },
             confirmButton = {
                 TextButton(onClick = { showApkDialog = false }) {
-                    Text("Закрыть", color = Color.Gray)
+                    Text("Закрыть", color = grayText)
                 }
             }
         )
@@ -542,13 +630,13 @@ private fun StatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = if (isSystemInDarkTheme()) Color.White else Color(0xFF1E293B),
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = if (isSystemInDarkTheme()) Color.Gray else Color(0xFF64748B)
             )
         }
     }
@@ -562,6 +650,9 @@ private fun AppListItem(
     onRemoveFromBlacklist: () -> Unit,
     onUninstall: () -> Unit
 ) {
+    val textColor = if (isSystemInDarkTheme()) Color.White else Color(0xFF1E293B)
+    val grayText = if (isSystemInDarkTheme()) Color.Gray else Color(0xFF64748B)
+    
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -612,13 +703,13 @@ private fun AppListItem(
                 Text(
                     text = app.appName,
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
+                    color = textColor,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = app.packageName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = grayText
                 )
                 if (app.isThreat && app.threatType.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))

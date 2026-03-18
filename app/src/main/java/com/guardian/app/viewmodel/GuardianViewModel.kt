@@ -411,6 +411,83 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
         return _virusTotalResults.value[packageName]
     }
     
+    // Scan single app with VirusTotal
+    fun scanSingleAppWithVirusTotal(packageName: String, appName: String) {
+        if (!virusTotalService.isApiKeyConfigured()) {
+            viewModelScope.launch {
+                repository.addEvent(
+                    EventType.SCAN_COMPLETED,
+                    "⚠️ VirusTotal Not Configured",
+                    "Please add your API key in settings"
+                )
+            }
+            return
+        }
+        
+        viewModelScope.launch {
+            _isVirusTotalScanning.value = true
+            _virusTotalProgress.value = Pair(1, 1)
+            
+            try {
+                when (val result = virusTotalService.scanApp(packageName)) {
+                    is ScanResult.Success -> {
+                        _virusTotalResults.value = _virusTotalResults.value + (packageName to result.result)
+                        
+                        if (result.result.isInfected) {
+                            repository.addEvent(
+                                EventType.APP_BLOCKED,
+                                "🦠 VirusTotal Threat",
+                                "$appName - ${result.result.malwareName ?: "detected by ${result.result.detectedBy} scanners"}",
+                                packageName
+                            )
+                            NotificationHelper.showThreatFoundNotification(
+                                getApplication(),
+                                appName,
+                                result.result.malwareName ?: "Detected by ${result.result.detectedBy} scanners"
+                            )
+                        } else {
+                            repository.addEvent(
+                                EventType.SCAN_COMPLETED,
+                                "✅ $appName Safe",
+                                "VirusTotal: ${result.result.detectedBy}/${result.result.totalScanners} scanners"
+                            )
+                        }
+                    }
+                    is ScanResult.Error -> {
+                        repository.addEvent(
+                            EventType.SCAN_COMPLETED,
+                            "❌ Scan Error",
+                            "Error scanning $appName: ${result.message}"
+                        )
+                    }
+                    is ScanResult.NotFound -> {
+                        repository.addEvent(
+                            EventType.SCAN_COMPLETED,
+                            "ℹ️ $appName",
+                            "App not found in VirusTotal database"
+                        )
+                    }
+                    is ScanResult.RateLimited -> {
+                        repository.addEvent(
+                            EventType.SCAN_COMPLETED,
+                            "⏳ Rate Limited",
+                            "VirusTotal API rate limit reached. Try again later."
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                repository.addEvent(
+                    EventType.SCAN_COMPLETED,
+                    "❌ Scan Failed",
+                    "Error: ${e.message}"
+                )
+            } finally {
+                _isVirusTotalScanning.value = false
+                _virusTotalProgress.value = Pair(0, 0)
+            }
+        }
+    }
+    
     // APK Scanner - scan a single APK file
     fun scanApk(apkPath: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
