@@ -7,6 +7,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.guardian.app.data.model.AppStats
 import com.guardian.app.data.model.BlacklistedApp
 import com.guardian.app.data.model.EventType
+import com.guardian.app.data.model.ScanHistory
+import com.guardian.app.data.model.ScanType
 import com.guardian.app.data.model.SecurityEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -34,6 +36,7 @@ class GuardianRepository(private val context: Context) {
         private val BLACKLIST = stringPreferencesKey("blacklist")
         private val EVENTS = stringPreferencesKey("events")
         private val STATS = stringPreferencesKey("stats")
+        private val SCAN_HISTORY = stringPreferencesKey("scan_history")
     }
     
     // Theme State
@@ -161,6 +164,48 @@ class GuardianRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[STATS] = """{"threatsBlocked":0,"appsScanned":0,"lastScanTime":0}"""
         }
+    }
+    
+    // Scan History
+    val scanHistory: Flow<List<ScanHistory>> = context.dataStore.data.map { prefs ->
+        parseScanHistory(prefs[SCAN_HISTORY] ?: "[]")
+    }
+    
+    suspend fun addScanHistory(scanHistory: ScanHistory) {
+        context.dataStore.edit { prefs ->
+            val current = parseScanHistory(prefs[SCAN_HISTORY] ?: "[]").toMutableList()
+            current.add(0, scanHistory)
+            val trimmed = current.take(50) // Keep last 50 scans
+            prefs[SCAN_HISTORY] = scanHistoryToJson(trimmed)
+        }
+    }
+    
+    private fun parseScanHistory(json: String): List<ScanHistory> {
+        return try {
+            if (json == "[]" || json.isEmpty()) return emptyList()
+            val list = mutableListOf<ScanHistory>()
+            val items = json.removePrefix("[").removeSuffix("]").split("},{")
+            items.forEach { item ->
+                val clean = item.removePrefix("{").removeSuffix("}")
+                val id = extractValue(clean, "id")
+                val timestamp = extractValue(clean, "timestamp").toLongOrNull() ?: 0L
+                val appsScanned = extractValue(clean, "appsScanned").toIntOrNull() ?: 0
+                val threatsFound = extractValue(clean, "threatsFound").toIntOrNull() ?: 0
+                val scanTypeStr = extractValue(clean, "scanType")
+                val scanType = try { ScanType.valueOf(scanTypeStr) } catch (e: Exception) { ScanType.LOCAL }
+                if (id.isNotEmpty()) {
+                    list.add(ScanHistory(id, timestamp, appsScanned, threatsFound, scanType))
+                }
+            }
+            list
+        } catch (e: Exception) { emptyList() }
+    }
+    
+    private fun scanHistoryToJson(list: List<ScanHistory>): String {
+        if (list.isEmpty()) return "[]"
+        return "[" + list.joinToString(",") { 
+            """{"id":"${it.id}","timestamp":${it.timestamp},"appsScanned":${it.appsScanned},"threatsFound":${it.threatsFound},"scanType":"${it.scanType.name}"}""" 
+        } + "]"
     }
     
     // JSON Helpers

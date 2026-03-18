@@ -34,3 +34,16 @@ data class AppStats(
     val appsScanned: Int = 0,
     val lastScanTime: Long = 0
 )
+
+data class ScanHistory(
+    val id: String = UUID.randomUUID().toString(),
+    val timestamp: Long = System.currentTimeMillis(),
+    val appsScanned: Int,
+    val threatsFound: Int,
+    val scanType: ScanType
+)
+
+enum class ScanType {
+    LOCAL,
+    VIRUS_TOTAL
+}

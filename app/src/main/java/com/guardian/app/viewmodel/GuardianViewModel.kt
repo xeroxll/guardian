@@ -11,7 +11,10 @@ import com.guardian.app.data.api.VirusTotalService
 import com.guardian.app.data.model.AppStats
 import com.guardian.app.data.model.BlacklistedApp
 import com.guardian.app.data.model.EventType
+import com.guardian.app.data.model.ScanHistory
+import com.guardian.app.data.model.ScanType
 import com.guardian.app.data.model.SecurityEvent
+import com.guardian.app.data.notification.NotificationHelper
 import com.guardian.app.data.repository.GuardianRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -43,6 +46,7 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
     val blacklist = repository.blacklist.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val events = repository.events.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val stats = repository.stats.stateIn(viewModelScope, SharingStarted.Eagerly, AppStats())
+    val scanHistory = repository.scanHistory.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     
     // VirusTotal scan state
     private val _virusTotalResults = MutableStateFlow<Map<String, VirusTotalResult>>(emptyMap())
@@ -232,6 +236,16 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                 // Update stats with threats found
                 repository.updateScanStatsWithThreats(packages.size, threatsFound)
                 
+                // Save scan to history
+                repository.addScanHistory(ScanHistory(
+                    appsScanned = packages.size,
+                    threatsFound = threatsFound,
+                    scanType = ScanType.LOCAL
+                ))
+                
+                // Show notification
+                NotificationHelper.showScanCompleteNotification(getApplication(), threatsFound, packages.size)
+                
                 if (threatsFound > 0) {
                     repository.addEvent(
                         EventType.SCAN_COMPLETED,
@@ -347,6 +361,16 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                 // Update stats with VT threats
                 repository.updateScanStatsWithThreats(resultsMap.size, threatsFound)
                 
+                // Save scan to history
+                repository.addScanHistory(ScanHistory(
+                    appsScanned = resultsMap.size,
+                    threatsFound = threatsFound,
+                    scanType = ScanType.VIRUS_TOTAL
+                ))
+                
+                // Show notification
+                NotificationHelper.showScanCompleteNotification(getApplication(), threatsFound, resultsMap.size)
+                
                 repository.addEvent(
                     EventType.SCAN_COMPLETED,
                     if (threatsFound > 0) "⚠️ VirusTotal Scan Complete" else "✅ VirusTotal Scan Complete",
@@ -368,5 +392,79 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
     
     fun getVirusTotalResult(packageName: String): VirusTotalResult? {
         return _virusTotalResults.value[packageName]
+    }
+    
+    // APK Scanner - scan a single APK file
+    fun scanApk(apkPath: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val context = getApplication<Application>()
+                val pm = context.packageManager
+                
+                // Get package info from APK
+                val packageInfo = pm.getPackageArchiveInfo(apkPath, PackageManager.GET_PERMISSIONS)
+                
+                if (packageInfo == null) {
+                    onResult(false, "Не удалось прочитать APK файл")
+                    return@launch
+                }
+                
+                val packageName = packageInfo.packageName
+                val appName = packageInfo.applicationInfo?.let { pm.getApplicationLabel(it).toString() } ?: packageName
+                
+                // Scan via VirusTotal if API key is configured
+                if (isVirusTotalApiKeyConfigured()) {
+                    val result = virusTotalService.scanApp(packageName)
+                    
+                    when (result) {
+                        is ScanResult.Success -> {
+                            if (result.result.isInfected) {
+                                NotificationHelper.showThreatFoundNotification(
+                                    context,
+                                    appName,
+                                    result.result.malwareName ?: "Detected by ${result.result.detectedBy} scanners"
+                                )
+                                onResult(true, "⚠️ Угроза найдена: ${result.result.malwareName ?: "detected by ${result.result.detectedBy} scanners"}")
+                            } else {
+                                onResult(false, "✅ Безопасно (${result.result.detectedBy}/${result.result.totalScanners} сканеров)")
+                            }
+                        }
+                        is ScanResult.NotFound -> {
+                            onResult(false, "ℹ️ Приложение не найдено в базе VirusTotal")
+                        }
+                        is ScanResult.Error -> {
+                            onResult(false, "Ошибка: ${result.message}")
+                        }
+                        is ScanResult.RateLimited -> {
+                            onResult(false, "⏳ Лимит API. Попробуйте позже.")
+                        }
+                    }
+                } else {
+                    // Basic scan without VirusTotal
+                    val dangerousPerms = packageInfo.requestedPermissions?.filter { perm ->
+                        perm.contains("READ_SMS") || perm.contains("SEND_SMS") || 
+                        perm.contains("READ_CONTACTS") || perm.contains("CAMERA") ||
+                        perm.contains("RECORD_AUDIO") || perm.contains("ACCESS_FINE_LOCATION")
+                    } ?: emptyList()
+                    
+                    if (dangerousPerms.isNotEmpty()) {
+                        NotificationHelper.showThreatFoundNotification(context, appName, "Опасные разрешения: ${dangerousPerms.size}")
+                        onResult(true, "⚠️ Опасные разрешения: ${dangerousPerms.joinToString { it.substringAfterLast(".") }}")
+                    } else {
+                        onResult(false, "✅ Безопасно (нет опасных разрешений)")
+                    }
+                }
+                
+                // Save to history
+                repository.addScanHistory(ScanHistory(
+                    appsScanned = 1,
+                    threatsFound = 0,
+                    scanType = ScanType.LOCAL
+                ))
+                
+            } catch (e: Exception) {
+                onResult(false, "Ошибка: ${e.message}")
+            }
+        }
     }
 }

@@ -56,6 +56,8 @@ fun ScanScreen(viewModel: GuardianViewModel) {
     var isScanning by remember { mutableStateOf(false) }
     var scanResults by remember { mutableStateOf<List<AppScanResult>>(emptyList()) }
     var showVirusTotalDialog by remember { mutableStateOf(false) }
+    var showApkDialog by remember { mutableStateOf(false) }
+    var apkResult by remember { mutableStateOf<String?>(null) }
     var showAllApps by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
@@ -232,6 +234,26 @@ fun ScanScreen(viewModel: GuardianViewModel) {
                     }
                 }
             }
+        }
+        
+        // APK Scan Button
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        OutlinedButton(
+            onClick = { showApkDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isScanning && !isVirusTotalScanning,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = GuardianBlue
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Android,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Сканировать APK файл")
         }
         
         // Scan Status
@@ -437,6 +459,56 @@ fun ScanScreen(viewModel: GuardianViewModel) {
             dismissButton = {
                 TextButton(onClick = { showVirusTotalDialog = false }) {
                     Text("Отмена", color = Color.Gray)
+                }
+            }
+        )
+    }
+    
+    // APK Scan Dialog
+    if (showApkDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showApkDialog = false
+                apkResult = null
+            },
+            containerColor = GuardianSurface,
+            title = { 
+                Text("Сканирование APK", color = Color.White, fontWeight = FontWeight.Bold) 
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Выберите APK файл для проверки на вирусы.",
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_GET_CONTENT).apply {
+                                type = "application/vnd.android.package-archive"
+                                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                            }
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GuardianPrimary)
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Выбрать файл")
+                    }
+                    if (apkResult != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = apkResult!!,
+                            color = if (apkResult!!.startsWith("⚠️")) GuardianRed else GuardianGreen,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showApkDialog = false }) {
+                    Text("Закрыть", color = Color.Gray)
                 }
             }
         )
