@@ -73,5 +73,4 @@
     <string name="suspicious_call">Suspicious call detected</string>
     <string name="usb_security_warning">Security Warning</string>
     <string name="usb_debugging_enabled">USB Debugging is ENABLED! This is a major security risk.</string>
-    <string name="protection_active">Protection Active</string>
 </resources>
