@@ -227,7 +227,7 @@ fun HomeScreen(viewModel: GuardianViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
         
         ModuleToggleCard(
-            icon = Icons.Default.Install,
+            icon = Icons.Default.Apps,
             title = "App Monitor",
             subtitle = "Track app installations",
             isEnabled = viewModel.isAppMonitorEnabled.collectAsState().value,

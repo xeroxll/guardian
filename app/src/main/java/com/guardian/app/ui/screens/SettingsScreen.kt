@@ -20,7 +20,7 @@ import com.guardian.app.viewmodel.GuardianViewModel
 @Composable
 fun SettingsScreen(viewModel: GuardianViewModel) {
     val isProtectionEnabled by viewModel.isProtectionEnabled.collectAsState()
-    val isUsbDebugEnabled by viewModel.isUsbDebugEnabled.collectAsState()
+    val isUsbMonitorEnabled by viewModel.isUsbMonitorEnabled.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
     
     Column(
@@ -60,7 +60,7 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
             trailing = {
                 Switch(
                     checked = isProtectionEnabled,
-                    onCheckedChange = { viewModel.toggleProtection() },
+                    onCheckedChange = { viewModel.setProtectionEnabled(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = GuardianGreen,
@@ -84,16 +84,54 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         
         SettingsItem(
             icon = Icons.Default.Usb,
-            iconTint = if (isUsbDebugEnabled) GuardianRed else GuardianBlue,
-            title = "USB Debugging",
-            subtitle = if (isUsbDebugEnabled) "⚠️ Security risk detected" else "No threats detected",
+            iconTint = if (isUsbMonitorEnabled) GuardianBlue else GuardianSurfaceVariant,
+            title = "USB Debug Monitor",
+            subtitle = if (isUsbMonitorEnabled) "Monitoring enabled" else "Monitoring disabled",
             trailing = {
                 Switch(
-                    checked = isUsbDebugEnabled,
-                    onCheckedChange = { viewModel.toggleUsbDebug() },
+                    checked = isUsbMonitorEnabled,
+                    onCheckedChange = { viewModel.setUsbMonitorEnabled(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = GuardianRed,
+                        checkedTrackColor = GuardianBlue,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = GuardianSurfaceVariant
+                    )
+                )
+            }
+        )
+        
+        SettingsItem(
+            icon = Icons.Default.Sms,
+            iconTint = GuardianBlue,
+            title = "SMS Filter",
+            subtitle = "Block scam SMS messages",
+            trailing = {
+                Switch(
+                    checked = viewModel.isSmsFilterEnabled.collectAsState().value,
+                    onCheckedChange = { viewModel.setSmsFilterEnabled(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = GuardianBlue,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = GuardianSurfaceVariant
+                    )
+                )
+            }
+        )
+        
+        SettingsItem(
+            icon = Icons.Default.Phone,
+            iconTint = GuardianPink,
+            title = "Call Filter",
+            subtitle = "Block suspicious calls",
+            trailing = {
+                Switch(
+                    checked = viewModel.isCallFilterEnabled.collectAsState().value,
+                    onCheckedChange = { viewModel.setCallFilterEnabled(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = GuardianPink,
                         uncheckedThumbColor = Color.White,
                         uncheckedTrackColor = GuardianSurfaceVariant
                     )
@@ -103,16 +141,21 @@ fun SettingsScreen(viewModel: GuardianViewModel) {
         
         SettingsItem(
             icon = Icons.Default.Apps,
-            iconTint = GuardianBlue,
-            title = "Package Monitor",
-            subtitle = "Monitor app installations"
-        )
-        
-        SettingsItem(
-            icon = Icons.Default.Notifications,
             iconTint = GuardianYellow,
-            title = "Push Notifications",
-            subtitle = "Get alerts for suspicious activity"
+            title = "Package Monitor",
+            subtitle = "Monitor app installations",
+            trailing = {
+                Switch(
+                    checked = viewModel.isAppMonitorEnabled.collectAsState().value,
+                    onCheckedChange = { viewModel.setAppMonitorEnabled(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = GuardianYellow,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = GuardianSurfaceVariant
+                    )
+                )
+            }
         )
         
         Spacer(modifier = Modifier.height(24.dp))
