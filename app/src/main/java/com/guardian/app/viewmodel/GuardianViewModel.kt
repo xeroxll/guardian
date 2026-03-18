@@ -343,6 +343,26 @@ class GuardianViewModel(application: Application) : AndroidViewModel(application
                     "com.whatsapp.gbmods.gbwhatsapp2",
                     "com.gbwhatsapp",  // Another GBWhatsApp
                     
+                    // MAX streaming
+                    "com.max.app",  // MAX (HBO Max)
+                    "com.wb.max",
+                    
+                    // Classifieds
+                    "ru.avito",  // Avito
+                    "ru.avito.debug",
+                    "com.avito",
+                    
+                    // Camera apps
+                    "com.relens.android",  // ReLens
+                    "com.relens",
+                    "com.adobe.lightroom",
+                    "com.vsco.cam",
+                    "com.vsco.android",
+                    
+                    // Sushi/Seafood delivery
+                    "ru.sushisea",  // Sushisea
+                    "com.sushisea",
+                    
                     // More Chinese apps
                     "com.tencent.mobileqqi",  // QQ International
                     "com.tencent.qqlite",  // QQ Lite

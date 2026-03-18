@@ -961,7 +961,17 @@ class AppMonitorReceiver : BroadcastReceiver() {
             "com.guardian.app", "com.google.android.youtube", "com.whatsapp", "org.telegram.messenger",
             "com.vkontakte.android", "com.instagram.android", "com.facebook.katana",
             "ru.sberbankmobile", "com.idamob.tinkoff.android", "ru.yandex.searchplugin",
-            "ru.megafon.mlk", "ru.mts.mymts", "ru.beeline.services", "ru.tele2.mytele2"
+            "ru.megafon.mlk", "ru.mts.mymts", "ru.beeline.services", "ru.tele2.mytele2",
+            // Movies/Streaming
+            "com.kinopoisk", "ru.kinopoisk", "com.max.app", "com.wb.max",
+            // Classifieds
+            "ru.avito", "ru.avito.debug", "com.avito",
+            // Taxi
+            "ru.yandex.taxi", "com.yandex.taxi", "com.ubertaxi", "ru.taxsee.taxsee",
+            // Camera/Photo
+            "com.relens.android", "com.relens", "com.adobe.lightroom", "com.vsco.cam",
+            // Food delivery
+            "ru.sushisea", "com.sushisea", "ru.chibbis", "com.chibbis", "com.deliveryclub"
         )
         
         if (trustedApps.contains(packageName) || 
