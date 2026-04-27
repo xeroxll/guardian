@@ -53,7 +53,7 @@ The app requires the following permissions:
 - PACKAGE_USAGE_STATS
 - FOREGROUND_SERVICE
 - REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-- SYSTEM_ALERT_WINDOW
+
 
 
 ## License
